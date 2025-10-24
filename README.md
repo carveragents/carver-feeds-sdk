@@ -135,8 +135,6 @@ claude> List all feeds in any topics containing the word "banking" or "regulatio
 - **[SKILL.md](SKILL.md)**: Main skill entry point - when to use, core operations, quick examples
 - **[reference.md](reference.md)**: Complete API reference - endpoints, schemas, module documentation
 - **[examples.md](examples.md)**: Comprehensive usage examples - 9 detailed examples covering common workflows
-- **[docs/implementation-plan.md](docs/implementation-plan.md)**: Technical implementation specifications
-- **[docs/LESSONS.md](docs/LESSONS.md)**: Lessons learned during implementation
 
 ## Project Structure
 
@@ -183,18 +181,6 @@ carver-feeds-skill/
 - Extensive documentation (SKILL.md, reference.md, examples.md)
 - Type hints throughout codebase
 - Logging at appropriate levels
-
-## API Endpoints
-
-The skill supports 5 Carver API endpoints:
-
-1. **GET /api/v1/feeds/topics** - List all regulatory topics (~114 topics)
-2. **GET /api/v1/feeds/** - List all feeds, optionally filtered by topic (~827 feeds)
-3. **GET /api/v1/feeds/entries/list** - List all entries with pagination (~10,000 entries)
-4. **GET /api/v1/feeds/{feed_id}/entries** - Get entries for a specific feed (optimized)
-5. **GET /api/v1/feeds/topics/{topic_id}/entries** - Get entries for a topic (optimized)
-
-**Performance Tip**: Use endpoints 4 or 5 when filtering by feed/topic for faster queries.
 
 ## Module Reference
 
@@ -245,7 +231,11 @@ Search and filtering with method chaining. See [reference.md](reference.md#scrip
 
 ## Contributing
 
-This project follows a phased implementation approach. See [docs/implementation-plan.md](docs/implementation-plan.md) for technical specifications and [docs/LESSONS.md](docs/LESSONS.md) for implementation insights.
+We welcome contributions! Please follow these guidelines:
+
+1. **Fork the repository** and create a feature branch
+4. **Update documentation** as needed
+5. **Submit a pull request** with a clear description
 
 ## License
 
@@ -255,5 +245,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For issues or questions:
 - Review documentation: [SKILL.md](SKILL.md), [reference.md](reference.md), [examples.md](examples.md)
-- Check implementation plan: [docs/implementation-plan.md](docs/implementation-plan.md)
-- Review lessons learned: [docs/LESSONS.md](docs/LESSONS.md)
