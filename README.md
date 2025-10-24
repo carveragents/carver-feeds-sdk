@@ -34,6 +34,7 @@ source .venv/bin/activate  # On macOS/Linux
 # .venv\Scripts\activate   # On Windows
 
 # Install dependencies
+# OR just ask Claude to execute a task and it will automatically install the dependencies
 pip install -r requirements.txt
 ```
 
@@ -45,13 +46,16 @@ cp .env.example .env
 
 # Edit .env and add your API key
 # CARVER_API_KEY=your_actual_api_key_here
+# CARVER_BASE_API_URL=carver_base_api_url_here
 ```
 
 **Important**: Obtain your API key from your Carver account settings. Never commit `.env` to version control.
 
 ## Usage Examples
 
-### Example 1: Search for Recent Regulatory Updates
+### Python scripts
+
+#### Example 1: Search for Recent Regulatory Updates
 
 ```python
 from scripts.query_engine import create_query_engine
@@ -71,7 +75,7 @@ print(f"Found {len(results)} recent banking regulations")
 print(results[['feed_name', 'entry_title', 'entry_published_at']].head())
 ```
 
-### Example 2: List Topics and Feeds
+#### Example 2: List Topics and Feeds
 
 ```python
 from scripts.data_manager import create_data_manager
@@ -88,7 +92,7 @@ banking_feeds = dm.get_feeds_df(topic_id=topics_df['id'].iloc[0])
 print(f"Feeds in topic: {len(banking_feeds)}")
 ```
 
-### Example 3: Complex Multi-Filter Query
+#### Example 3: Complex Multi-Filter Query
 
 ```python
 from scripts.query_engine import create_query_engine
@@ -110,6 +114,20 @@ print(f"Found {len(results)} entries matching all criteria")
 # Export to CSV
 csv_path = qe.to_csv("sec_regulations_2024.csv")
 print(f"Exported to {csv_path}")
+```
+
+### Claude Skill
+
+#### Example 1: List Topics Available
+
+```bash
+claude> List all topics available in the Carver platform.
+```
+
+#### Example 2: List All Feeds in a Topic Containing one or more Keywords
+
+```bash
+claude> List all feeds in any topics containing the word "banking" or "regulation" 
 ```
 
 **See [SKILL.md](SKILL.md) for complete usage instructions and [examples.md](examples.md) for 9 comprehensive usage examples.**
