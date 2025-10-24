@@ -1,6 +1,6 @@
 # Carver Feeds Skill
 
-A Claude skill that enables fetching, analyzing, and querying regulatory feed data from the Carver Horizon platform.
+A Claude skill and a set of python scripts that enables fetching, analyzing, and querying regulatory feed data from the Carver platform.
 
 ## Overview
 
