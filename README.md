@@ -12,8 +12,6 @@ The carver-feeds-skill provides comprehensive capabilities for working with regu
 - **Multiple Export Formats**: Export results to DataFrame, CSV, JSON, or dictionary formats
 - **Optimized Performance**: Smart endpoint selection and caching for efficient data access
 
-**Project Status**: ✅ Production Ready - Phases 1-5 Complete
-
 ## Requirements
 
 - Python 3.10 or higher
