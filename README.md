@@ -4,7 +4,7 @@ A Claude skill and a set of python scripts that enables fetching, analyzing, and
 
 ## Overview
 
-The carver-feeds-skill provides comprehensive capabilities for working with regulatory feed data:
+The carver-feeds-api provides comprehensive capabilities for working with regulatory feed data:
 
 - **Data Fetching**: Retrieve topics, feeds, and entries from the Carver API
 - **Hierarchical Views**: Construct pandas DataFrames showing topic → feed → entry relationships
