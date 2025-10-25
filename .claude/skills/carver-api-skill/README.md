@@ -1,1 +1,1 @@
-To use this skill, place the contents of carver-api-skill folder in this directory. It will automatically install the dependencies and set up the environment when needed.
+To use this repo as a Claude skill, place the contents of `skill/` folder in this directory. Claude will automatically install the dependencies and set up the environment when needed.

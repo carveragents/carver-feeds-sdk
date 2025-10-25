@@ -4,7 +4,7 @@ A Claude skill and a set of python scripts that enables fetching, analyzing, and
 
 ## Overview
 
-The carver-feeds-api provides comprehensive capabilities for working with regulatory feed data:
+The carver-feeds-api-skill provides comprehensive capabilities for working with regulatory feed data, and can be used as a Claude skill or a python script.
 
 - **Data Fetching**: Retrieve topics, feeds, and entries from the Carver API
 - **Hierarchical Views**: Construct pandas DataFrames showing topic → feed → entry relationships
@@ -23,8 +23,16 @@ The carver-feeds-api provides comprehensive capabilities for working with regula
 ### 1. Installation
 
 ```bash
-# Navigate to project directory
+# Make a project directory
+mkdir /path/to/carver-feeds-api-skill
 cd /path/to/carver-feeds-api-skill
+
+# Get the repo
+git clone https://github.com/carveragents/carver-feeds-api-skill.git .
+
+# Navigate to the skill directory
+# Everything useful is here
+cd skill
 
 # Create and activate virtual environment
 python3 -m venv .venv
@@ -131,7 +139,7 @@ print(f"Exported to {csv_path}")
 
 ### Claude Skill
 
-If using as a Claude skill, place the skill in the `skills` directory of your `.claude` directory. It will automatically install the dependencies and set up the environment when needed.
+If using as a Claude skill, place the contents of `skill` folder in this repo into the `skills` directory of your `.claude` directory. Claude will automatically install the dependencies and set up the environment when needed.
 
 #### Example 1: Single query
 
