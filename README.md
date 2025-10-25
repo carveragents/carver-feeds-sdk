@@ -4,7 +4,7 @@ A Claude skill and a set of python scripts that enables fetching, analyzing, and
 
 ## Overview
 
-The carver-feeds-api provides comprehensive capabilities for working with regulatory feed data:
+The carver-feeds-skill provides comprehensive capabilities for working with regulatory feed data:
 
 - **Data Fetching**: Retrieve topics, feeds, and entries from the Carver API
 - **Hierarchical Views**: Construct pandas DataFrames showing topic → feed → entry relationships
@@ -53,27 +53,31 @@ cp .env.example .env
 
 ### Python scripts
 
-#### Example 1: Search for Recent Regulatory Updates
+#### Example 1: Get All Topics, Feeds, and Entries
 
 ```python
-from scripts.query_engine import create_query_engine
-from datetime import datetime, timedelta
+from scripts.data_manager import create_data_manager
 
-qe = create_query_engine()
+dm = create_data_manager()
 
-# Find banking regulations from the last 30 days
-thirty_days_ago = datetime.now() - timedelta(days=30)
-results = qe \
-    .filter_by_topic(topic_name="Banking") \
-    .filter_by_date(start_date=thirty_days_ago) \
-    .search_entries("regulation") \
-    .to_dataframe()
+# Get all topics
+topics_df = dm.get_topics_df()
+print(f"Total topics: {len(topics_df)}")
+print(topics_df[['id', 'name', 'is_active']].head())
 
-print(f"Found {len(results)} recent banking regulations")
-print(results[['feed_name', 'entry_title', 'entry_published_at']].head())
+# Get all feeds
+feeds_df = dm.get_feeds_df()
+print(f"\nTotal feeds: {len(feeds_df)}")
+print(feeds_df[['id', 'name', 'topic_name', 'is_active']].head())
+
+# Get all entries (warning: this may be slow and fetch a lot of data)
+# For production use, always filter by topic_id or feed_id first
+entries_df = dm.get_entries_df(fetch_all=True)
+print(f"\nTotal entries: {len(entries_df)}")
+print(entries_df[['id', 'title', 'published_at']].head())
 ```
 
-#### Example 2: List Topics and Feeds
+#### Example 2: List Topics, Feeds, and Entries for a Topic
 
 ```python
 from scripts.data_manager import create_data_manager
@@ -86,8 +90,19 @@ print(f"Available topics: {len(topics_df)}")
 print(topics_df[['id', 'name', 'is_active']].head())
 
 # Get feeds for a specific topic
-banking_feeds = dm.get_feeds_df(topic_id=topics_df['id'].iloc[0])
-print(f"Feeds in topic: {len(banking_feeds)}")
+selected_topic_id = topics_df['id'].iloc[0]
+selected_topic_name = topics_df['name'].iloc[0]
+topic_feeds = dm.get_feeds_df(topic_id=selected_topic_id)
+print(f"\nFeeds in topic '{selected_topic_name}' (id {selected_topic_id}): {len(topic_feeds)}")
+print(topic_feeds[['id', 'name', 'is_active']].head())
+
+# Get entries for one of the feeds
+if len(topic_feeds) > 0:
+    selected_feed_id = topic_feeds['id'].iloc[0]
+    selected_feed_name = topic_feeds['name'].iloc[0]
+    feed_entries = dm.get_entries_df(feed_id=selected_feed_id)
+    print(f"\nEntries in feed '{selected_feed_name}' (id {selected_feed_id}): {len(feed_entries)}")
+    print(feed_entries[['id', 'title', 'published_at']].head())
 ```
 
 #### Example 3: Complex Multi-Filter Query
@@ -100,32 +115,38 @@ qe = create_query_engine()
 
 # Find entries with multiple filters
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
-    .filter_by_feed(feed_name="SEC") \
+    .filter_by_topic(topic_name="Ireland") \
+    .filter_by_feed(feed_name="news") \
     .filter_by_active(is_active=True) \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
-    .search_entries(["regulation", "compliance"], match_all=True) \
+    .search_entries(["regulation", "compliance"], match_all=False) \
     .to_dataframe()
 
 print(f"Found {len(results)} entries matching all criteria")
 
 # Export to CSV
-csv_path = qe.to_csv("sec_regulations_2024.csv")
+csv_path = qe.to_csv("ireland_news_2024.csv")
 print(f"Exported to {csv_path}")
 ```
 
 ### Claude Skill
 
-#### Example 1: List Topics Available
+If using as a Claude skill, place the skill in the `skills` directory of your `.claude` directory. It will automatically install the dependencies and set up the environment when needed.
+
+#### Example 1: Single query
 
 ```bash
 claude> List all topics available in the Carver platform.
 ```
 
-#### Example 2: List All Feeds in a Topic Containing one or more Keywords
+#### Example 2: Follow up queries
 
 ```bash
-claude> List all feeds in any topics containing the word "banking" or "regulation" 
+claude> Get me all feed names that have the word News in the title from any Ireland related topics
+...
+...
+...
+claude> OK, now get me all the entries from this feed
 ```
 
 **See [SKILL.md](SKILL.md) for complete usage instructions and [examples.md](examples.md) for 9 comprehensive usage examples.**
@@ -140,18 +161,18 @@ claude> List all feeds in any topics containing the word "banking" or "regulatio
 
 ```
 carver-feeds-skill/
-├── SKILL.md                  # ✅ Main skill entry point
-├── reference.md              # ✅ API reference documentation
-├── examples.md               # ✅ Usage examples
-├── README.md                 # ✅ This file
+├── SKILL.md                  # Main skill entry point
+├── reference.md              # API reference documentation
+├── examples.md               # Usage examples
+├── README.md                 # This file
 ├── requirements.txt          # Python dependencies
 ├── .env.example              # Environment configuration template
 ├── .gitignore                # Git ignore rules
 └── scripts/
     ├── __init__.py           # Package initialization
-    ├── carver_api.py         # ✅ API client module (Phase 1)
-    ├── data_manager.py       # ✅ DataFrame construction (Phase 2)
-    ├── query_engine.py       # ✅ Search & filtering (Phase 3)
+    ├── carver_api.py         # API client module
+    ├── data_manager.py       # DataFrame construction
+    ├── query_engine.py       # Search & filtering
     └── utils.py              # Shared utilities
 ```
 

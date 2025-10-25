@@ -121,7 +121,8 @@ class FeedsDataManager:
         - is_active: Active status
 
         Note: The API returns topic as a nested object {id, name}, which is flattened
-        to topic_id and topic_name columns.
+        to topic_id and topic_name columns. Filtering by topic_id is done client-side
+        since the API endpoint doesn't support this parameter.
 
         Args:
             topic_id: Optional topic ID to filter feeds
@@ -147,7 +148,8 @@ class FeedsDataManager:
 
         try:
             # Fetch data from API
-            feeds_data = self.api_client.list_feeds(topic_id=topic_id)
+            # Note: API endpoint doesn't actually support topic_id filtering, so we fetch all feeds
+            feeds_data = self.api_client.list_feeds()
 
             # Flatten topic object before conversion
             for feed in feeds_data:
@@ -169,6 +171,15 @@ class FeedsDataManager:
             # Ensure is_active is boolean
             if 'is_active' in df.columns:
                 df['is_active'] = df['is_active'].fillna(True).astype(bool)
+
+            # Filter by topic_id if provided (client-side filtering)
+            if topic_id:
+                if 'topic_id' in df.columns:
+                    original_count = len(df)
+                    df = df[df['topic_id'] == topic_id]
+                    logger.info(f"Filtered from {original_count} to {len(df)} feeds for topic {topic_id}")
+                else:
+                    logger.warning("topic_id column not found, cannot filter by topic")
 
             logger.info(f"Successfully converted {len(df)} feeds to DataFrame")
             return df
@@ -377,67 +388,88 @@ class FeedsDataManager:
 
             # If entries should be included, fetch and merge them
             if include_entries:
-                entries_df = self.get_entries_df(
-                    feed_id=feed_id,
-                    topic_id=topic_id if not feed_id else None,  # Only use topic_id if feed_id not specified
-                    fetch_all=True
-                )
+                # Strategy: Fetch entries per-feed and manually add feed metadata
+                # This is necessary because API endpoints don't return feed_id with entries
 
-                entries_df = entries_df.rename(columns={
-                    'id': 'entry_id',
-                    'title': 'entry_title',
-                    'link': 'entry_link',
-                    'content_markdown': 'entry_content_markdown',
-                    'published_at': 'entry_published_at',
-                    'created_at': 'entry_created_at',
-                    'is_active': 'entry_is_active'
-                })
+                # Get the feeds we need to fetch entries for (from hierarchy DataFrame)
+                feeds_to_fetch = hierarchy[['feed_id', 'feed_name', 'feed_url',
+                                           'feed_is_active', 'topic_id', 'topic_name',
+                                           'topic_is_active']].copy()
 
-                # Merge strategy depends on whether we have feed_id in entries
-                if 'feed_id' in entries_df.columns and not entries_df['feed_id'].isna().all():
-                    # Standard case: merge on feed_id
-                    hierarchy = pd.merge(
-                        hierarchy,
-                        entries_df,
-                        on='feed_id',
-                        how='inner'
-                    )
-                elif topic_id and not feed_id:
-                    # Topic-only case: entries don't have feed_id
-                    # Add topic information directly to entries (skip feeds)
-                    logger.info("Topic entries don't have feed_id, creating simplified topic+entries view")
-
-                    # Filter topics to just the one we want
-                    topic_row = topics_df[topics_df['topic_id'] == topic_id]
-
-                    if len(topic_row) > 0 and len(entries_df) > 0:
-                        # Copy entries_df to avoid modifying the original
-                        hierarchy = entries_df.copy()
-
-                        # Get topic values
-                        topic_dict = topic_row.iloc[0].to_dict()
-
-                        # Add topic columns to each entry
-                        # Handle list/array values specially to avoid length mismatch errors
-                        for col, value in topic_dict.items():
-                            # Convert lists/arrays to string representation for safety
-                            if isinstance(value, (list, tuple)):
-                                hierarchy[col] = str(value)
-                            else:
-                                hierarchy[col] = value
-
-                        # Add placeholder feed columns (empty strings)
-                        hierarchy['feed_id'] = ''
-                        hierarchy['feed_name'] = ''
-                        hierarchy['feed_url'] = ''
-                    else:
-                        # No topic found or no entries, return empty
-                        hierarchy = pd.DataFrame()
-                else:
-                    # No feed_id and no specific topic_id filter
-                    # This shouldn't happen, but handle gracefully
-                    logger.warning("Entries have no feed_id and no topic_id filter specified")
+                if len(feeds_to_fetch) == 0:
+                    logger.warning("No feeds found to fetch entries for")
                     hierarchy = pd.DataFrame()
+                else:
+                    logger.info(f"Fetching entries for {len(feeds_to_fetch)} feeds...")
+
+                    all_entries = []
+                    for _, feed_row in feeds_to_fetch.iterrows():
+                        current_feed_id = feed_row['feed_id']
+
+                        # Fetch entries for this specific feed
+                        feed_entries = self.api_client.get_feed_entries(
+                            feed_id=current_feed_id,
+                            limit=1000
+                        )
+
+                        # Add feed and topic metadata to each entry
+                        for entry in feed_entries:
+                            # Add feed information
+                            entry['feed_id'] = feed_row['feed_id']
+                            entry['feed_name'] = feed_row['feed_name']
+                            entry['feed_url'] = feed_row['feed_url']
+                            entry['feed_is_active'] = feed_row['feed_is_active']
+
+                            # Add topic information
+                            entry['topic_id'] = feed_row['topic_id']
+                            entry['topic_name'] = feed_row['topic_name']
+                            entry['topic_is_active'] = feed_row['topic_is_active']
+
+                            all_entries.append(entry)
+
+                    if len(all_entries) == 0:
+                        logger.info("No entries found for the specified feeds")
+                        hierarchy = pd.DataFrame()
+                    else:
+                        # Convert to DataFrame
+                        expected_columns = [
+                            'id', 'title', 'link', 'content_markdown',
+                            'published_at', 'created_at', 'is_active',
+                            'feed_id', 'feed_name', 'feed_url', 'feed_is_active',
+                            'topic_id', 'topic_name', 'topic_is_active'
+                        ]
+                        entries_df = self._json_to_dataframe(all_entries, expected_columns)
+
+                        # Map published_date to published_at if needed
+                        if 'published_date' in entries_df.columns:
+                            if 'published_at' not in entries_df.columns or entries_df['published_at'].isna().all():
+                                entries_df['published_at'] = entries_df['published_date']
+
+                        # Convert date columns
+                        date_columns = ['published_at', 'created_at']
+                        for col in date_columns:
+                            if col in entries_df.columns:
+                                entries_df[col] = pd.to_datetime(entries_df[col], errors='coerce')
+
+                        # Ensure is_active is boolean
+                        if 'is_active' in entries_df.columns:
+                            entries_df['is_active'] = entries_df['is_active'].fillna(True).astype(bool)
+
+                        # Rename entry columns
+                        entries_df = entries_df.rename(columns={
+                            'id': 'entry_id',
+                            'title': 'entry_title',
+                            'link': 'entry_link',
+                            'content_markdown': 'entry_content_markdown',
+                            'published_at': 'entry_published_at',
+                            'created_at': 'entry_created_at',
+                            'is_active': 'entry_is_active'
+                        })
+
+                        # The entries already have all the feed and topic info, so just return them
+                        hierarchy = entries_df
+
+                        logger.info(f"Built complete hierarchy with {len(hierarchy)} entries")
 
             logger.info(
                 f"Successfully built hierarchical view with {len(hierarchy)} rows"

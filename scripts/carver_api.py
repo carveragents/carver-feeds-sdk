@@ -198,7 +198,7 @@ class CarverFeedsAPIClient:
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-        limit: int = 50,
+        limit: int = 1000,
         fetch_all: bool = True
     ) -> List[Dict]:
         """
@@ -262,12 +262,12 @@ class CarverFeedsAPIClient:
         logger.info("Fetching topics...")
         return self._make_request('GET', '/api/v1/feeds/topics')
 
-    def list_feeds(self, topic_id: Optional[str] = None) -> List[Dict]:
+    def list_feeds(self) -> List[Dict]:
         """
-        Fetch feeds from /api/v1/feeds/.
+        Fetch all feeds from /api/v1/feeds/.
 
-        Args:
-            topic_id: Optional topic ID to filter feeds
+        Note: This endpoint does not support filtering by topic_id despite what
+        the API documentation may suggest. Use client-side filtering instead.
 
         Returns:
             List of feed dictionaries
@@ -275,17 +275,17 @@ class CarverFeedsAPIClient:
         Example:
             >>> client = get_client()
             >>> feeds = client.list_feeds()
-            >>> banking_feeds = client.list_feeds(topic_id="banking-123")
+            >>> # Filter client-side by topic_id
+            >>> banking_feeds = [f for f in feeds if f.get('topic', {}).get('id') == 'topic-123']
         """
-        logger.info(f"Fetching feeds{f' for topic {topic_id}' if topic_id else ''}...")
-        params = {'topic_id': topic_id} if topic_id else None
-        return self._make_request('GET', '/api/v1/feeds/', params)
+        logger.info("Fetching all feeds...")
+        return self._make_request('GET', '/api/v1/feeds/')
 
     def list_entries(
         self,
         feed_id: Optional[str] = None,
         is_active: Optional[bool] = None,
-        limit: int = 50,
+        limit: int = 1000,
         fetch_all: bool = False
     ) -> List[Dict]:
         """
@@ -323,7 +323,7 @@ class CarverFeedsAPIClient:
         )
         return self._paginate('/api/v1/feeds/entries/list', params, limit, fetch_all)
 
-    def get_feed_entries(self, feed_id: str, limit: int = 100) -> List[Dict]:
+    def get_feed_entries(self, feed_id: str, limit: int = 1000) -> List[Dict]:
         """
         Get entries for specific feed from /api/v1/feeds/{feed_id}/entries.
 
@@ -350,7 +350,7 @@ class CarverFeedsAPIClient:
             return response.get('items', [])
         return response
 
-    def get_topic_entries(self, topic_id: str, limit: int = 100) -> List[Dict]:
+    def get_topic_entries(self, topic_id: str, limit: int = 1000) -> List[Dict]:
         """
         Get entries for a specific topic.
 

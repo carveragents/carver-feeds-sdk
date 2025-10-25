@@ -86,10 +86,9 @@ topics = client.list_topics()
 
 **Endpoint**: `GET /api/v1/feeds/`
 
-**Description**: Fetch all RSS feeds, optionally filtered by topic.
+**Description**: Fetch all RSS feeds. **Note**: This endpoint does NOT support filtering by topic_id at the API level, despite what some documentation may suggest.
 
-**Parameters**:
-- `topic_id` (optional): Filter feeds by topic ID
+**Parameters**: None
 
 **Response**:
 ```json
@@ -116,11 +115,13 @@ topics = client.list_topics()
 # All feeds
 feeds = client.list_feeds()
 
-# Feeds for specific topic
-topic_feeds = client.list_feeds(topic_id="topic-123")
+# To filter by topic, use the data manager which does client-side filtering
+from scripts.data_manager import create_data_manager
+dm = create_data_manager()
+topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
 ```
 
-**Note**: The response includes a nested `topic` object which the data manager flattens to `topic_id` and `topic_name` fields for easier DataFrame operations.
+**Note**: The response includes a nested `topic` object which the data manager flattens to `topic_id` and `topic_name` fields for easier DataFrame operations. Filtering by topic_id is handled client-side in `get_feeds_df()` since the API endpoint doesn't support this parameter.
 
 ---
 
@@ -471,12 +472,14 @@ Fetch feeds as a pandas DataFrame, optionally filtered by topic.
 
 **Returns**: DataFrame with feed schema
 
+**Implementation Note**: The API endpoint `/api/v1/feeds/` does NOT support the `topic_id` parameter. When `topic_id` is provided, this method fetches all feeds and filters them client-side. This is acceptable since feeds metadata is relatively small (~800 feeds).
+
 **Example**:
 ```python
 # All feeds
 feeds_df = dm.get_feeds_df()
 
-# Feeds for specific topic
+# Feeds for specific topic (client-side filtering)
 topic_feeds = dm.get_feeds_df(topic_id="topic-123")
 ```
 
@@ -512,24 +515,37 @@ topic_entries = dm.get_entries_df(topic_id="topic-123")
 ---
 
 ##### `get_hierarchical_view(include_entries: bool = True, feed_id: Optional[str] = None, topic_id: Optional[str] = None) -> pd.DataFrame`
-Build denormalized hierarchical view merging topics, feeds, and optionally entries.
+Build denormalized hierarchical view with complete metadata for all entries.
 
 **Parameters**:
 - `include_entries`: Include entry data (default: True)
-- `feed_id`: Filter entries by feed (optional, recommended)
-- `topic_id`: Filter entries by topic (optional)
+- `feed_id`: Filter to specific feed (optional, fastest)
+- `topic_id`: Filter to specific topic (optional, fetches all feeds in topic)
 
 **Returns**: DataFrame with hierarchical schema (topic_*, feed_*, entry_* columns)
 
-**Performance Warning**: With `include_entries=True` and no `feed_id`/`topic_id`, creates ~10,000 row DataFrame. Always filter when possible.
+**Implementation Details**:
+- Fetches topic→feed hierarchy (metadata only, ~800 feeds)
+- For entries: Fetches per-feed using `get_feed_entries(feed_id)` for each feed in scope
+- Manually enriches each entry with: feed_id, feed_name, topic_id, topic_name
+- **Guarantees**: ALL entries ALWAYS have complete topic and feed metadata
+- **API Limitation Workaround**: Neither `/api/v1/feeds/{feed_id}/entries` nor `/api/v1/feeds/topics/{topic_id}/entries` returns feed_id, so we enrich manually
+
+**Performance Characteristics**:
+- `feed_id` specified: 1 API call for entries (fastest)
+- `topic_id` specified with N feeds: N API calls for entries (one per feed)
+- Neither specified: Fetches entries for ALL 800+ feeds (very slow, not recommended)
 
 **Example**:
 ```python
-# Topic + Feed only (fast)
+# Topic + Feed only (fast, no entries)
 hierarchy = dm.get_hierarchical_view(include_entries=False)
 
-# Full hierarchy for specific feed (medium speed)
+# Full hierarchy for specific feed (fast, 1 API call)
 full = dm.get_hierarchical_view(include_entries=True, feed_id="feed-456")
+
+# Full hierarchy for topic (moderate, N API calls where N = number of feeds in topic)
+topic_full = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123")
 ```
 
 ---

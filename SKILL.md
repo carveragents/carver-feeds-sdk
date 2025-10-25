@@ -84,20 +84,27 @@ topic_feeds = dm.get_feeds_df(topic_id="topic-123")
 
 ### 3. Build Hierarchical Views
 
-Construct denormalized views showing the full data hierarchy:
+Construct denormalized views showing the full data hierarchy with complete metadata:
 
 ```python
 # Topic + Feed hierarchy (fast, no entries)
 hierarchy = dm.get_hierarchical_view(include_entries=False)
 print(hierarchy[['topic_name', 'feed_name', 'feed_url']].head())
 
-# Full hierarchy for a specific feed (includes entries)
-# WARNING: Including all entries is slow. Always filter by feed_id when possible
+# Full hierarchy for a specific feed (includes entries with complete metadata)
+# Each entry will have topic_id, topic_name, feed_id, feed_name, etc.
 full_hierarchy = dm.get_hierarchical_view(
     include_entries=True,
     feed_id="feed-456"
 )
 print(full_hierarchy[['topic_name', 'feed_name', 'entry_title']].head())
+
+# Full hierarchy for a topic (fetches entries for all feeds in that topic)
+# NOTE: If a topic has many feeds, this may take longer
+topic_hierarchy = dm.get_hierarchical_view(
+    include_entries=True,
+    topic_id="topic-123"
+)
 ```
 
 ## Quick Examples
@@ -148,9 +155,14 @@ results = qe.search_entries(
 
 **Performance Tips**:
 1. **Filter by feed or topic first** before loading entries to reduce data volume
+   - Filtering by topic_name or feed_name now automatically uses optimized endpoints
+   - Names are resolved to IDs behind the scenes for efficient data fetching
 2. **Use lazy loading**: Query engine only fetches data when needed
-3. **Reuse query engine**: Data is cached after first load
+3. **Reuse query engine**: Data is cached after first load, use `.chain()` to reset
 4. **Chain filters**: More efficient than separate queries
+5. **Complete metadata guaranteed**: All entries always have topic_id, topic_name, feed_id, feed_name fields
+   - You can filter in any order (topic→feed→date or feed→topic→date)
+   - No need to worry about missing columns when chaining filters
 
 ## Export Formats
 
@@ -205,9 +217,11 @@ No entries found matching criteria
 Query taking too long (> 60 seconds)
 ```
 **Solution**:
-- Filter by feed_id or topic_id before loading entries
+- Filter by topic_name or feed_name first (automatically uses optimized endpoints)
+- If querying a topic with many feeds, expect proportionally longer fetch times
+- For very large topics, consider filtering by specific feed_name after topic
 - Use `fetch_all=False` for exploratory queries
-- Avoid including entries in hierarchical view without filtering
+- Avoid fetching entries for all topics/feeds without any filters
 
 ## Guidelines
 

@@ -228,9 +228,10 @@ class EntryQueryEngine:
         At least one of topic_id or topic_name must be provided.
         If both are provided, topic_id takes precedence.
 
-        OPTIMIZED: When topic_id is provided and no data is loaded yet,
-        this method uses the topic-specific endpoint to fetch only that
-        topic's entries, avoiding the need to download all entries.
+        OPTIMIZED: When topic_id OR topic_name is provided and no data is loaded yet,
+        this method uses the topic-specific endpoint to fetch only that topic's entries,
+        avoiding the need to download all entries. For topic_name, it first resolves
+        the name to topic_id(s) then fetches entries efficiently.
 
         Args:
             topic_id: Topic ID to filter by
@@ -243,24 +244,75 @@ class EntryQueryEngine:
             >>> qe = create_query_engine()
             >>> # Filter by topic ID (optimized - only fetches this topic's entries)
             >>> results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
-            >>> # Filter by topic name (partial match)
+            >>> # Filter by topic name (optimized - resolves name to ID first)
             >>> results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
         """
         if not topic_id and not topic_name:
             logger.warning("Neither topic_id nor topic_name provided, no filtering applied")
             return self
 
-        # OPTIMIZATION: If filtering by topic_id and data not yet loaded,
-        # use topic-specific endpoint to avoid downloading all entries
-        if topic_id and not self._initial_data_loaded:
-            logger.info(f"Optimized filter: Loading only topic {topic_id} entries")
-            self._results = self.data_manager.get_hierarchical_view(
-                include_entries=True,
-                topic_id=topic_id
-            )
-            self._initial_data_loaded = True
-            logger.info(f"Loaded {len(self._results)} entries for topic {topic_id}")
-            return self
+        # OPTIMIZATION: If data not yet loaded, use topic-specific endpoint
+        if not self._initial_data_loaded:
+            if topic_id:
+                # Direct topic_id lookup
+                logger.info(f"Optimized filter: Loading only topic {topic_id} entries")
+                self._results = self.data_manager.get_hierarchical_view(
+                    include_entries=True,
+                    topic_id=topic_id
+                )
+                self._initial_data_loaded = True
+                logger.info(f"Loaded {len(self._results)} entries for topic {topic_id}")
+                return self
+            elif topic_name:
+                # Resolve topic_name to topic_id(s) first, then fetch entries
+                logger.info(f"Optimized filter: Looking up topic_id for topic_name '{topic_name}'")
+                topics_df = self.data_manager.get_topics_df()
+
+                # Find matching topics (case-insensitive partial match)
+                mask = topics_df['name'].fillna('').str.contains(
+                    topic_name,
+                    case=False,
+                    na=False
+                )
+                matching_topics = topics_df[mask]
+
+                if len(matching_topics) == 0:
+                    logger.warning(f"No topics found matching '{topic_name}'")
+                    self._results = pd.DataFrame()
+                    self._initial_data_loaded = True
+                    return self
+
+                # If single match, use optimized endpoint
+                if len(matching_topics) == 1:
+                    resolved_topic_id = matching_topics.iloc[0]['id']
+                    topic_display_name = matching_topics.iloc[0]['name']
+                    logger.info(f"Found single matching topic '{topic_display_name}' ({resolved_topic_id})")
+                    self._results = self.data_manager.get_hierarchical_view(
+                        include_entries=True,
+                        topic_id=resolved_topic_id
+                    )
+                    self._initial_data_loaded = True
+                    logger.info(f"Loaded {len(self._results)} entries for topic {resolved_topic_id}")
+                    return self
+                else:
+                    # Multiple matches - fetch entries for each topic and combine
+                    logger.info(f"Found {len(matching_topics)} matching topics, fetching entries for all")
+                    all_entries = []
+                    for _, topic in matching_topics.iterrows():
+                        topic_entries = self.data_manager.get_hierarchical_view(
+                            include_entries=True,
+                            topic_id=topic['id']
+                        )
+                        all_entries.append(topic_entries)
+
+                    if all_entries:
+                        self._results = pd.concat(all_entries, ignore_index=True)
+                    else:
+                        self._results = pd.DataFrame()
+
+                    self._initial_data_loaded = True
+                    logger.info(f"Loaded {len(self._results)} entries across {len(matching_topics)} topics")
+                    return self
 
         # Standard path: filter from already-loaded data
         self._ensure_data_loaded()
@@ -294,9 +346,10 @@ class EntryQueryEngine:
         At least one of feed_id or feed_name must be provided.
         If both are provided, feed_id takes precedence.
 
-        OPTIMIZED: When feed_id is provided and no data is loaded yet,
-        this method uses the feed-specific endpoint to fetch only that
-        feed's entries, avoiding the need to download all entries.
+        OPTIMIZED: When feed_id OR feed_name is provided and no data is loaded yet,
+        this method uses the feed-specific endpoint to fetch only that feed's entries,
+        avoiding the need to download all entries. For feed_name, it first resolves
+        the name to feed_id(s) then fetches entries efficiently.
 
         Args:
             feed_id: Feed ID to filter by
@@ -309,24 +362,75 @@ class EntryQueryEngine:
             >>> qe = create_query_engine()
             >>> # Filter by feed ID (optimized - only fetches this feed's entries)
             >>> results = qe.filter_by_feed(feed_id="feed-456").to_dataframe()
-            >>> # Filter by feed name (partial match)
+            >>> # Filter by feed name (optimized - resolves name to ID first)
             >>> results = qe.filter_by_feed(feed_name="SEC News").to_dataframe()
         """
         if not feed_id and not feed_name:
             logger.warning("Neither feed_id nor feed_name provided, no filtering applied")
             return self
 
-        # OPTIMIZATION: If filtering by feed_id and data not yet loaded,
-        # use feed-specific endpoint to avoid downloading all entries
-        if feed_id and not self._initial_data_loaded:
-            logger.info(f"Optimized filter: Loading only feed {feed_id} entries")
-            self._results = self.data_manager.get_hierarchical_view(
-                include_entries=True,
-                feed_id=feed_id
-            )
-            self._initial_data_loaded = True
-            logger.info(f"Loaded {len(self._results)} entries for feed {feed_id}")
-            return self
+        # OPTIMIZATION: If data not yet loaded, use feed-specific endpoint
+        if not self._initial_data_loaded:
+            if feed_id:
+                # Direct feed_id lookup
+                logger.info(f"Optimized filter: Loading only feed {feed_id} entries")
+                self._results = self.data_manager.get_hierarchical_view(
+                    include_entries=True,
+                    feed_id=feed_id
+                )
+                self._initial_data_loaded = True
+                logger.info(f"Loaded {len(self._results)} entries for feed {feed_id}")
+                return self
+            elif feed_name:
+                # Resolve feed_name to feed_id(s) first, then fetch entries
+                logger.info(f"Optimized filter: Looking up feed_id for feed_name '{feed_name}'")
+                feeds_df = self.data_manager.get_feeds_df()
+
+                # Find matching feeds (case-insensitive partial match)
+                mask = feeds_df['name'].fillna('').str.contains(
+                    feed_name,
+                    case=False,
+                    na=False
+                )
+                matching_feeds = feeds_df[mask]
+
+                if len(matching_feeds) == 0:
+                    logger.warning(f"No feeds found matching '{feed_name}'")
+                    self._results = pd.DataFrame()
+                    self._initial_data_loaded = True
+                    return self
+
+                # If single match, use optimized endpoint
+                if len(matching_feeds) == 1:
+                    resolved_feed_id = matching_feeds.iloc[0]['id']
+                    feed_display_name = matching_feeds.iloc[0]['name']
+                    logger.info(f"Found single matching feed '{feed_display_name}' ({resolved_feed_id})")
+                    self._results = self.data_manager.get_hierarchical_view(
+                        include_entries=True,
+                        feed_id=resolved_feed_id
+                    )
+                    self._initial_data_loaded = True
+                    logger.info(f"Loaded {len(self._results)} entries for feed {resolved_feed_id}")
+                    return self
+                else:
+                    # Multiple matches - fetch entries for each feed and combine
+                    logger.info(f"Found {len(matching_feeds)} matching feeds, fetching entries for all")
+                    all_entries = []
+                    for _, feed in matching_feeds.iterrows():
+                        feed_entries = self.data_manager.get_hierarchical_view(
+                            include_entries=True,
+                            feed_id=feed['id']
+                        )
+                        all_entries.append(feed_entries)
+
+                    if all_entries:
+                        self._results = pd.concat(all_entries, ignore_index=True)
+                    else:
+                        self._results = pd.DataFrame()
+
+                    self._initial_data_loaded = True
+                    logger.info(f"Loaded {len(self._results)} entries across {len(matching_feeds)} feeds")
+                    return self
 
         # Standard path: filter from already-loaded data
         self._ensure_data_loaded()
@@ -398,6 +502,18 @@ class EntryQueryEngine:
                 self._results[date_field],
                 errors='coerce'
             )
+
+        # Handle timezone awareness to avoid comparison errors
+        # If the date column is timezone-aware and user dates are not, make user dates timezone-aware
+        date_column = self._results[date_field]
+        if hasattr(date_column.dtype, 'tz') and date_column.dtype.tz is not None:
+            # Column is timezone-aware
+            if start_date and start_date.tzinfo is None:
+                start_date = start_date.replace(tzinfo=date_column.dtype.tz)
+                logger.debug(f"Converted start_date to timezone-aware: {start_date}")
+            if end_date and end_date.tzinfo is None:
+                end_date = end_date.replace(tzinfo=date_column.dtype.tz)
+                logger.debug(f"Converted end_date to timezone-aware: {end_date}")
 
         if start_date:
             logger.info(f"Filtering by start_date: {start_date}")
