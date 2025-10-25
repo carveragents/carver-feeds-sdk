@@ -1,10 +1,10 @@
-# Carver Feeds Skill
+# Carver Feeds Skill and API
 
 A Claude skill and a set of python scripts that enables fetching, analyzing, and querying regulatory feed data from the Carver platform.
 
 ## Overview
 
-The carver-feeds-skill provides comprehensive capabilities for working with regulatory feed data:
+The carver-feeds-api provides comprehensive capabilities for working with regulatory feed data:
 
 - **Data Fetching**: Retrieve topics, feeds, and entries from the Carver API
 - **Hierarchical Views**: Construct pandas DataFrames showing topic → feed → entry relationships
@@ -24,7 +24,7 @@ The carver-feeds-skill provides comprehensive capabilities for working with regu
 
 ```bash
 # Navigate to project directory
-cd /path/to/carver-feeds-skill
+cd /path/to/carver-feeds-api-skill
 
 # Create and activate virtual environment
 python3 -m venv .venv
