@@ -123,11 +123,11 @@ qe = create_query_engine()
 
 # Find entries with multiple filters
 results = qe \
-    .filter_by_topic(topic_name="Ireland") \
-    .filter_by_feed(feed_name="news") \
-    .filter_by_active(is_active=True) \
-    .filter_by_date(start_date=datetime(2024, 1, 1)) \
-    .search_entries(["regulation", "compliance"], match_all=False) \
+    .filter_by_topic(topic_name="Ireland") \ # any topics containing Ireland
+    .filter_by_feed(feed_name="news") \ # any feeds containing news
+    .filter_by_active(is_active=True) \ # only active feeds
+    .filter_by_date(start_date=datetime(2024, 1, 1)) \ # only entries after 2024-01-01
+    .search_entries(["regulation", "compliance"], match_all=False) \ # any entries containing regulation or compliance
     .to_dataframe()
 
 print(f"Found {len(results)} entries matching all criteria")
@@ -157,31 +157,36 @@ claude> Get me all feed names that have the word News in the title from any Irel
 claude> OK, now get me all the entries from this feed
 ```
 
-**See [SKILL.md](SKILL.md) for complete usage instructions and [examples.md](examples.md) for 9 comprehensive usage examples.**
+**See [SKILL.md](skill/SKILL.md) for complete usage instructions and [examples.md](skill/examples.md) for 9 comprehensive usage examples.**
 
 ## Documentation
 
-- **[SKILL.md](SKILL.md)**: Main skill entry point - when to use, core operations, quick examples
-- **[reference.md](reference.md)**: Complete API reference - endpoints, schemas, module documentation
-- **[examples.md](examples.md)**: Comprehensive usage examples - 9 detailed examples covering common workflows
+- **[SKILL.md](skill/SKILL.md)**: Main skill entry point - when to use, core operations, quick examples
+- **[reference.md](skill/reference.md)**: Complete API reference - endpoints, schemas, module documentation
+- **[examples.md](skill/examples.md)**: Comprehensive usage examples - 9 detailed examples covering common workflows
 
 ## Project Structure
 
 ```
-carver-feeds-skill/
-├── SKILL.md                  # Main skill entry point
-├── reference.md              # API reference documentation
-├── examples.md               # Usage examples
-├── README.md                 # This file
-├── requirements.txt          # Python dependencies
-├── .env.example              # Environment configuration template
+carver-feeds-api-skill/
+├── README.md                 # Project overview (this file)
+├── LICENSE                   # MIT License
 ├── .gitignore                # Git ignore rules
-└── scripts/
-    ├── __init__.py           # Package initialization
-    ├── carver_api.py         # API client module
-    ├── data_manager.py       # DataFrame construction
-    ├── query_engine.py       # Search & filtering
-    └── utils.py              # Shared utilities
+├── .claude/                  # Claude Code integration
+│   └── skills/
+│       └── carver-api-skill/ # Claude skill configuration
+└── skill/                    # Main skill implementation
+    ├── SKILL.md              # Skill documentation and entry point
+    ├── reference.md          # API reference documentation
+    ├── examples.md           # Usage examples
+    ├── requirements.txt      # Python dependencies
+    ├── .env.example          # Environment configuration template
+    └── scripts/              # Python modules
+        ├── __init__.py       # Package initialization
+        ├── carver_api.py     # API client module
+        ├── data_manager.py   # DataFrame construction
+        ├── query_engine.py   # Search & filtering
+        └── utils.py          # Shared utilities
 ```
 
 ## Key Features
@@ -214,13 +219,13 @@ carver-feeds-skill/
 ## Module Reference
 
 ### scripts.carver_api
-API client with authentication, pagination, and retry logic. See [reference.md](reference.md#scriptscarver_api) for details.
+API client with authentication, pagination, and retry logic. See [reference.md](skill/reference.md#scriptscarver_api) for details.
 
 ### scripts.data_manager
-DataFrame construction and hierarchical views. See [reference.md](reference.md#scriptsdata_manager) for details.
+DataFrame construction and hierarchical views. See [reference.md](skill/reference.md#scriptsdata_manager) for details.
 
 ### scripts.query_engine
-Search and filtering with method chaining. See [reference.md](reference.md#scriptsquery_engine) for details.
+Search and filtering with method chaining. See [reference.md](skill/reference.md#scriptsquery_engine) for details.
 
 ## Performance Tips
 
@@ -256,7 +261,7 @@ Search and filtering with method chaining. See [reference.md](reference.md#scrip
 | Empty results | Verify filters are correct, try broadening search |
 | Slow queries | Filter by feed/topic first, use optimized endpoints |
 
-**For detailed troubleshooting, see [SKILL.md](SKILL.md#common-issues-and-solutions).**
+**For detailed troubleshooting, see [SKILL.md](skill/SKILL.md#common-issues-and-solutions).**
 
 ## Contributing
 
@@ -273,4 +278,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 For issues or questions:
-- Review documentation: [SKILL.md](SKILL.md), [reference.md](reference.md), [examples.md](examples.md)
+- Review documentation: [SKILL.md](skill/SKILL.md), [reference.md](skill/reference.md), [examples.md](skill/examples.md)
