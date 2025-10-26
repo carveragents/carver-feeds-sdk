@@ -26,6 +26,7 @@ wheels/
 .env.local
 
 # IDE
+CLAUDE.md
 .claude/
 .vscode/
 .idea/
