@@ -8,7 +8,7 @@ A powerful Python SDK for the Carver Feeds API, enabling seamless access to regu
 
 ## Features
 
-- **Comprehensive API Client**: Full support for all Carver Feeds API endpoints with authentication, retry logic, and error handling
+- **Comprehensive API Client**: Full support for public Carver Feeds API endpoints with authentication, retry logic, and error handling
 - **DataFrame Integration**: Convert API responses to pandas DataFrames for easy data analysis
 - **Advanced Query Engine**: Fluent API with method chaining for building complex queries
 - **Optimized Performance**: Smart endpoint selection and caching for efficient data access
@@ -96,18 +96,18 @@ qe.to_json("results.json")
 Low-level API client with comprehensive error handling:
 
 - X-API-Key authentication
-- Automatic pagination
-- Exponential backoff retry logic
+- Automatic pagination (handles ~10,000+ entries)
+- Exponential backoff retry logic for rate limits
 - Support for all API endpoints
 
 ### Data Manager (`FeedsDataManager`)
 
 Converts API responses to pandas DataFrames:
 
-- JSON to DataFrame conversion
+- JSON to DataFrame conversion with schema validation
 - Hierarchical data views (topic → feed → entry)
-- Schema validation and missing field handling
-- Optimized endpoint selection
+- Smart endpoint selection for performance
+- Handles ~114 topics, ~827 feeds, ~10,000 entries
 
 ### Query Engine (`EntryQueryEngine`)
 
@@ -115,13 +115,75 @@ High-level query interface with fluent API:
 
 - Method chaining for complex queries
 - Filter by topic, feed, date range, and status
-- Keyword search across multiple fields
+- Keyword search with AND/OR logic across multiple fields
 - Multiple export formats (DataFrame, CSV, JSON, dict)
-- Lazy loading for better performance
+- Lazy loading with automatic endpoint optimization
+
+## Data Model
+
+The SDK works with three main entities in a hierarchical structure:
+
+```
+Topic (regulatory topics like Banking, Healthcare, Energy)
+  ↓ 1:N
+Feed (RSS feeds for each topic)
+  ↓ 1:N
+Entry (individual articles/entries)
+```
+
+**Key Fields**:
+- **Topic**: `id`, `name`, `description`, `is_active`, timestamps
+- **Feed**: `id`, `name`, `url`, `topic_id`, `topic_name`, `is_active`, timestamps
+- **Entry**: `id`, `title`, `link`, `content_markdown`, `description`, `published_at`, `feed_id`, `is_active`, timestamps
+
+## Advanced Features
+
+### Keyword Search
+
+```python
+# Single keyword (case-insensitive by default)
+qe.search_entries("regulation").to_dataframe()
+
+# Multiple keywords with OR logic (matches ANY)
+qe.search_entries(["regulation", "compliance", "enforcement"], match_all=False)
+
+# Multiple keywords with AND logic (matches ALL)
+qe.search_entries(["banking", "regulation"], match_all=True)
+
+# Case-sensitive search
+qe.search_entries("SEC", case_sensitive=True)
+
+# Search specific fields
+qe.search_entries("fintech", search_fields=['entry_title', 'entry_description'])
+```
+
+**Available Search Fields**:
+- `entry_content_markdown` (default, full article content)
+- `entry_title` (headline)
+- `entry_description` (brief summary)
+- `entry_link` (URL)
+
+### Hierarchical Views
+
+Build denormalized DataFrames combining topic, feed, and entry data:
+
+```python
+from carver_feeds import create_data_manager
+
+dm = create_data_manager()
+
+# Topic + Feed hierarchy (fast, no entries)
+hierarchy = dm.get_hierarchical_view(include_entries=False)
+
+# Full hierarchy for a specific feed
+full = dm.get_hierarchical_view(include_entries=True, feed_id="feed-456")
+
+# Full hierarchy for a topic (all feeds + entries)
+topic_data = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123")
+```
 
 ## Documentation
 
-- **[Complete Documentation](docs/README.md)**: Full SDK documentation
 - **[API Reference](docs/api-reference.md)**: Detailed API endpoint and module reference
 - **[Usage Examples](docs/examples.md)**: 9 comprehensive examples covering common workflows
 
@@ -171,30 +233,61 @@ carver-feeds-skill/
 └── pyproject.toml           # Package configuration
 ```
 
-## Performance Tips
+## Performance Optimization
 
-1. **Use specific endpoints**: Filter by topic/feed ID when possible
-   ```python
-   # Slow: fetch all entries, then filter
-   all_entries = dm.get_entries_df()
-   filtered = all_entries[all_entries['feed_id'] == 'feed-456']
+### 1. Filter Before Loading
 
-   # Fast: use optimized endpoint
-   filtered = dm.get_entries_df(feed_id='feed-456')
-   ```
+The query engine automatically uses optimized endpoints when you filter before loading data:
 
-2. **Reuse query engine**: Data is cached after first load
-   ```python
-   qe = create_query_engine()
-   results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
-   results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
-   ```
+```python
+# Optimal: Query engine uses get_topic_entries() endpoint
+qe = create_query_engine()
+results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
 
-3. **Leverage lazy loading**: Query engine only fetches when needed
-   ```python
-   qe = create_query_engine()  # No API call yet
-   results = qe.search_entries("regulation")  # API call happens here
-   ```
+# Optimal: Query engine uses get_feed_entries() endpoint
+results = qe.filter_by_feed(feed_name="SEC News").to_dataframe()
+
+# Less optimal: Loads all ~10,000 entries, then filters
+results = qe.to_dataframe()  # Loads everything first
+filtered = results[results['topic_name'].str.contains("Banking")]
+```
+
+### 2. Chain Filters Efficiently
+
+Apply filters in order of specificity (narrowest first):
+
+```python
+# Good: Narrow by topic first, then apply other filters
+results = qe \
+    .filter_by_topic(topic_name="Banking") \
+    .filter_by_date(start_date=datetime(2024, 1, 1)) \
+    .search_entries("regulation") \
+    .to_dataframe()
+```
+
+### 3. Reuse Query Engine
+
+Data is cached after the first load:
+
+```python
+qe = create_query_engine()
+
+# First query: loads data from API (~30-60 seconds for all entries)
+results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+
+# Subsequent queries: use cached data (instant)
+results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
+```
+
+### 4. Use Data Manager for Simple Queries
+
+For simple filtering without complex logic, use the Data Manager directly:
+
+```python
+# Faster for simple use cases
+dm = create_data_manager()
+entries = dm.get_entries_df(feed_id='feed-456')  # Direct endpoint call
+```
 
 ## Error Handling
 
@@ -214,6 +307,43 @@ except CarverAPIError as e:
     print(f"API error: {e}")
 ```
 
+## Best Practices
+
+1. **Use factory functions** for automatic environment configuration:
+   ```python
+   from carver_feeds import get_client, create_data_manager, create_query_engine
+
+   client = get_client()  # Automatically loads from .env
+   dm = create_data_manager()
+   qe = create_query_engine()
+   ```
+
+2. **Choose the right component** for your use case:
+   - **API Client**: Raw API responses, specific control over requests
+   - **Data Manager**: Simple DataFrame operations without complex filtering
+   - **Query Engine**: Complex queries with multiple filters and chaining
+
+3. **Handle errors gracefully**:
+   ```python
+   from carver_feeds import create_query_engine, CarverAPIError
+
+   try:
+       qe = create_query_engine()
+       results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+
+       if len(results) == 0:
+           print("No results found. Try broadening search criteria.")
+   except CarverAPIError as e:
+       print(f"API error: {e}")
+   ```
+
+4. **Export large result sets** to CSV for external processing:
+   ```python
+   # For large datasets, export rather than keeping in memory
+   results = qe.filter_by_topic(topic_name="Banking")
+   results.to_csv("banking_entries.csv")  # Saves ~50-100 MB to disk
+   ```
+
 ## Contributing
 
 We welcome contributions! Please follow these guidelines:
@@ -224,18 +354,17 @@ We welcome contributions! Please follow these guidelines:
 4. Run the test suite and type checking
 5. Submit a pull request
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Support
 
 For issues, questions, or feature requests:
 
-- **Documentation**: [docs/README.md](docs/README.md)
 - **API Reference**: [docs/api-reference.md](docs/api-reference.md)
 - **Examples**: [docs/examples.md](docs/examples.md)
 - **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-skill/issues)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Changelog
 

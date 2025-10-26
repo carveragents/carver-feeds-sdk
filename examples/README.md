@@ -51,6 +51,7 @@ For more comprehensive examples, see the [main examples documentation](../docs/e
 
 ## Getting Help
 
-- **Documentation**: [../docs/README.md](../docs/README.md)
+- **Main Documentation**: [../README.md](../README.md)
 - **API Reference**: [../docs/api-reference.md](../docs/api-reference.md)
+- **Usage Examples**: [../docs/examples.md](../docs/examples.md)
 - **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-skill/issues)

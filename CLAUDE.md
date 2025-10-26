@@ -204,7 +204,7 @@ Follow the pattern in carver_api.py:
 When adding or changing columns:
 1. Update `expected_columns` list in relevant data_manager method
 2. Add column to hierarchical view if needed (update rename operations)
-3. Update documentation in `docs/README.md` with new fields
+3. Update documentation in root `README.md` and `docs/api-reference.md` with new fields
 4. Handle missing data gracefully (use `fillna()` or `errors='coerce'`)
 5. Update package version if breaking changes
 
@@ -236,7 +236,7 @@ Core dependencies from requirements.txt:
 ## Additional Resources
 
 For complete API schemas, endpoint details, and comprehensive examples, see:
-- `docs/README.md` - User guide and quick examples
+- `README.md` - Main SDK documentation with user guide, data model, and quick examples
 - `docs/api-reference.md` - Full API reference and schemas
 - `docs/examples.md` - 9 detailed usage examples
 - `examples/` - Working example scripts

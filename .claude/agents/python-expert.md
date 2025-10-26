@@ -22,9 +22,9 @@ You adhere to these fundamental principles:
 ### Before Starting
 
 1. Check the session goal and understand it
-2. Read `docs/README.md`; you can find the relevant project documentation here
-3. Read `docs/LESSONS.md`; it contains lessons learned over the course of the project
-4. Review relevant existing code patterns 
+2. Read `README.md` (root) and `CLAUDE.md`; you can find the relevant project documentation here
+3. Review `docs/api-reference.md` and `docs/examples.md` for detailed API and usage information
+4. Review relevant existing code patterns
 5. Understand the full context in context of the session goal before making changes
 6. Activate the virtual environment: `source .venv/bin/activate` in the project root directory
 

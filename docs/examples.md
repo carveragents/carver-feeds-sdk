@@ -1,6 +1,6 @@
-# Carver Feeds Skill - Usage Examples
+# Carver Feeds SDK - Usage Examples
 
-This document provides practical, copy-pasteable examples for common use cases of the Carver Feeds Skill.
+This document provides practical, copy-paste examples for common use cases of the Carver Feeds SDK.
 
 ---
 
@@ -20,11 +20,11 @@ This document provides practical, copy-pasteable examples for common use cases o
 
 ## Example 1: List All Topics
 
-**Scenario**: User wants to see what regulatory topics are available in the system.
+**Scenario**: You want to see what regulatory topics are available in the system.
 
 **Code**:
 ```python
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import create_data_manager
 
 # Initialize data manager
 dm = create_data_manager()
@@ -65,11 +65,11 @@ Available Topics:
 
 ## Example 2: List Feeds for a Topic
 
-**Scenario**: User wants to see all RSS feeds available for a specific regulatory topic (e.g., Banking).
+**Scenario**: You want to see all RSS feeds available for a specific regulatory topic (e.g., Banking).
 
 **Code**:
 ```python
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import create_data_manager
 
 dm = create_data_manager()
 
@@ -121,9 +121,9 @@ Feeds in 'Banking Regulation':
 - Data source identification: Understanding where regulatory updates come from
 - Feed filtering: Selecting specific feeds for monitoring
 
-**Alternative - Search by Topic Name**:
+**Alternative - Using Query Engine**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
@@ -140,11 +140,11 @@ print(feeds.head(10))
 
 ## Example 3: Search Feed Entries by Keyword
 
-**Scenario**: User wants to find all entries from a specific feed that mention a keyword (e.g., "SEC News" feed with "cryptocurrency").
+**Scenario**: You want to find all entries from a specific feed that mention a keyword (e.g., "SEC News" feed with "cryptocurrency").
 
 **Code**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
@@ -215,11 +215,11 @@ print(f"Found {len(results)} entries mentioning crypto-related terms")
 
 ## Example 4: Search Entries Across All Feeds in a Topic
 
-**Scenario**: User wants to search for "compliance" across all feeds in the Banking topic.
+**Scenario**: You want to search for "compliance" across all feeds in the Banking topic.
 
 **Code**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
@@ -295,11 +295,11 @@ print(f"Banking: {len(banking_results)}, Healthcare: {len(healthcare_results)}")
 
 ## Example 5: Complex Multi-Filter Query
 
-**Scenario**: User wants to find recent active entries from Banking topic that mention both "regulation" AND "fintech", published in the last 3 months.
+**Scenario**: You want to find recent active entries from Banking topic that mention both "regulation" AND "fintech", published in the last 3 months.
 
 **Code**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 from datetime import datetime, timedelta
 
 qe = create_query_engine()
@@ -365,7 +365,7 @@ Preview: The Office of the Comptroller of the Currency today released a comprehe
 
 ...
 
-Full results exported to: /Users/achintthomas/work/scribble/code/repos/carver/carver-feeds-skill/banking_fintech_regulations.csv
+Full results exported to: /Users/username/banking_fintech_regulations.csv
 ```
 
 **Use Cases**:
@@ -390,11 +390,11 @@ print(f"Found {len(results)} entries (OR logic - broader results)")
 
 ## Example 6: Export Results to Different Formats
 
-**Scenario**: User wants to export search results in multiple formats for different uses (analysis, reporting, API integration).
+**Scenario**: You want to export search results in multiple formats for different uses (analysis, reporting, API integration).
 
 **Code**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 import json
 
 qe = create_query_engine()
@@ -456,7 +456,7 @@ Searching for healthcare compliance entries...
    - Date range: 2024-01-05 08:30:00 to 2024-10-24 16:45:00
    - Unique feeds: 18
 
-2. CSV file: /Users/achintthomas/work/scribble/code/repos/carver/carver-feeds-skill/healthcare_compliance.csv
+2. CSV file: /Users/username/healthcare_compliance.csv
    Use case: Open in Excel, Google Sheets
 
 3. JSON string: 245678 characters
@@ -483,11 +483,11 @@ Searching for healthcare compliance entries...
 
 ## Example 7: Date Range Analysis
 
-**Scenario**: User wants to analyze regulatory activity over time, comparing different quarters.
+**Scenario**: You want to analyze regulatory activity over time, comparing different quarters.
 
 **Code**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 from datetime import datetime
 import pandas as pd
 
@@ -597,11 +597,11 @@ Yearly Summary:
 
 ## Example 8: Multi-Topic Comparison
 
-**Scenario**: User wants to compare regulatory activity across different topics to understand which areas are most active.
+**Scenario**: You want to compare regulatory activity across different topics to understand which areas are most active.
 
 **Code**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -722,12 +722,11 @@ Comparison exported to: topic_comparison.csv
 
 ## Example 9: Feed Activity Analysis
 
-**Scenario**: User wants to understand which feeds are most active and identify feeds that might have stopped publishing.
+**Scenario**: You want to understand which feeds are most active and identify feeds that might have stopped publishing.
 
 **Code**:
 ```python
-from carver_feeds.data_manager import create_data_manager
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_data_manager, create_query_engine
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -903,8 +902,9 @@ broad = qe.search_entries(["banking", "finance", "credit"], match_all=False)
 ## Common Workflows
 
 ### Workflow 1: Daily Regulatory Brief
+
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 from datetime import datetime, timedelta
 
 qe = create_query_engine()
@@ -927,8 +927,9 @@ results.to_csv(f'daily_brief_{yesterday.strftime("%Y%m%d")}.csv', index=False)
 ```
 
 ### Workflow 2: Keyword Alert System
+
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
@@ -944,9 +945,9 @@ for keyword in alerts:
 ```
 
 ### Workflow 3: Topic Deep Dive
+
 ```python
-from carver_feeds.data_manager import create_data_manager
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_data_manager, create_query_engine
 
 dm = create_data_manager()
 qe = create_query_engine()
@@ -973,6 +974,7 @@ entries.to_csv(f'{topic_name.lower()}_deep_dive.csv', index=False)
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-10-25
+**Document Version**: 2.0
+**Last Updated**: 2025-10-26
+**SDK Version**: 0.1.0+
 **Status**: Production Ready

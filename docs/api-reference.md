@@ -1,6 +1,6 @@
-# Carver Feeds Skill - API Reference
+# Carver Feeds SDK - API Reference
 
-Complete technical reference for the Carver Feeds Skill, including API endpoints, data schemas, module documentation, and common patterns.
+Complete technical reference for the Carver Feeds SDK, including API endpoints, data schemas, module documentation, and common patterns.
 
 ---
 
@@ -34,11 +34,11 @@ All requests require an API key passed in the request header:
 X-API-Key: your_api_key_here
 ```
 
-The API client automatically includes this header when initialized with an API key from the environment.
+The SDK automatically includes this header when initialized with an API key from the environment.
 
 ### Rate Limiting
 
-The API enforces rate limits. The client includes automatic retry logic with exponential backoff for rate limit errors (429 status).
+The API enforces rate limits. The SDK includes automatic retry logic with exponential backoff for rate limit errors (429 status).
 
 **Retry Strategy**:
 - Initial delay: 1 second
@@ -72,9 +72,9 @@ The API enforces rate limits. The client includes automatic retry logic with exp
 ]
 ```
 
-**Python Usage**:
+**SDK Usage**:
 ```python
-from carver_feeds.carver_api import get_client
+from carver_feeds import get_client
 
 client = get_client()
 topics = client.list_topics()
@@ -86,7 +86,7 @@ topics = client.list_topics()
 
 **Endpoint**: `GET /api/v1/feeds/`
 
-**Description**: Fetch all RSS feeds. **Note**: This endpoint does NOT support filtering by topic_id at the API level, despite what some documentation may suggest.
+**Description**: Fetch all RSS feeds. **Note**: This endpoint does NOT support filtering by topic_id at the API level.
 
 **Parameters**: None
 
@@ -110,13 +110,13 @@ topics = client.list_topics()
 ]
 ```
 
-**Python Usage**:
+**SDK Usage**:
 ```python
 # All feeds
 feeds = client.list_feeds()
 
 # To filter by topic, use the data manager which does client-side filtering
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import create_data_manager
 dm = create_data_manager()
 topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
 ```
@@ -157,7 +157,7 @@ topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
 }
 ```
 
-**Python Usage**:
+**SDK Usage**:
 ```python
 # First page only
 entries = client.list_entries(limit=50, fetch_all=False)
@@ -200,7 +200,7 @@ active_entries = client.list_entries(is_active=True, fetch_all=True)
 }
 ```
 
-**Python Usage**:
+**SDK Usage**:
 ```python
 feed_entries = client.get_feed_entries("feed-456", limit=100)
 ```
@@ -220,12 +220,13 @@ feed_entries = client.get_feed_entries("feed-456", limit=100)
 
 **Response**: Same format as feed entries endpoint
 
-**Python Usage**:
+**SDK Usage**:
 ```python
 # Via API client
 topic_entries = client.get_topic_entries("topic-123", limit=500)
 
 # Via query engine (recommended)
+from carver_feeds import create_query_engine
 qe = create_query_engine()
 results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 ```
@@ -335,13 +336,13 @@ Hierarchical views merge topics, feeds, and optionally entries into a single den
 
 ## Module API Reference
 
-### scripts.carver_api
+### carver_feeds.carver_api
 
 #### `CarverFeedsAPIClient`
 
 **Initialization**:
 ```python
-from carver_feeds.carver_api import CarverFeedsAPIClient
+from carver_feeds import CarverFeedsAPIClient
 
 client = CarverFeedsAPIClient(
     base_url="https://app.carveragents.ai",
@@ -428,7 +429,7 @@ Factory function to create client from environment variables.
 
 **Example**:
 ```python
-from carver_feeds.carver_api import get_client
+from carver_feeds import get_client
 
 client = get_client()  # Uses .env configuration
 topics = client.list_topics()
@@ -436,14 +437,13 @@ topics = client.list_topics()
 
 ---
 
-### scripts.data_manager
+### carver_feeds.data_manager
 
 #### `FeedsDataManager`
 
 **Initialization**:
 ```python
-from carver_feeds.data_manager import FeedsDataManager
-from carver_feeds.carver_api import get_client
+from carver_feeds import FeedsDataManager, get_client
 
 client = get_client()
 dm = FeedsDataManager(client)
@@ -557,7 +557,7 @@ Factory function to create data manager from environment configuration.
 
 **Example**:
 ```python
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import create_data_manager
 
 dm = create_data_manager()  # Uses .env for API key
 topics = dm.get_topics_df()
@@ -565,14 +565,13 @@ topics = dm.get_topics_df()
 
 ---
 
-### scripts.query_engine
+### carver_feeds.query_engine
 
 #### `EntryQueryEngine`
 
 **Initialization**:
 ```python
-from carver_feeds.query_engine import EntryQueryEngine
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import EntryQueryEngine, create_data_manager
 
 dm = create_data_manager()
 qe = EntryQueryEngine(dm)
@@ -781,7 +780,7 @@ Factory function to create query engine from environment configuration.
 
 **Example**:
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()  # Uses .env for API key
 results = qe.search_entries("regulation").to_dataframe()
@@ -794,7 +793,7 @@ results = qe.search_entries("regulation").to_dataframe()
 ### Pattern 1: Basic Topic Exploration
 
 ```python
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import create_data_manager
 
 dm = create_data_manager()
 
@@ -812,7 +811,7 @@ print(f"Feeds in topic: {len(feeds_df)}")
 ### Pattern 2: Keyword Search with Filters
 
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 from datetime import datetime
 
 qe = create_query_engine()
@@ -832,7 +831,7 @@ print(results[['entry_title', 'feed_name', 'entry_published_at']].head())
 ### Pattern 3: Feed-Specific Analysis
 
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
@@ -849,7 +848,7 @@ print(monthly_counts.tail(6))
 ### Pattern 4: Export Workflow
 
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
@@ -870,7 +869,7 @@ print(f"Exported {len(df)} entries to CSV at {csv_path}")
 ### Pattern 5: Multi-Topic Comparison
 
 ```python
-from carver_feeds.query_engine import create_query_engine
+from carver_feeds import create_query_engine
 import pandas as pd
 
 qe = create_query_engine()
@@ -890,7 +889,7 @@ print(topic_counts)
 ### Pattern 6: Optimized Large Query
 
 ```python
-from carver_feeds.data_manager import create_data_manager
+from carver_feeds import create_data_manager
 
 dm = create_data_manager()
 
@@ -921,7 +920,7 @@ print(f"Found {len(keyword_matches)} matching entries")
 
 **Example**:
 ```python
-from carver_feeds.carver_api import get_client, AuthenticationError
+from carver_feeds import get_client, AuthenticationError
 
 try:
     client = get_client()
@@ -933,7 +932,7 @@ except AuthenticationError as e:
 #### `RateLimitError`
 **Cause**: Exceeded API rate limit (10 req/sec)
 
-**Solution**: Client automatically retries with backoff. If persistent, reduce request frequency.
+**Solution**: SDK automatically retries with backoff. If persistent, reduce request frequency.
 
 #### `CarverAPIError`
 **Cause**: General API error (network, server error, etc.)
@@ -943,8 +942,7 @@ except AuthenticationError as e:
 ### Error Handling Best Practices
 
 ```python
-from carver_feeds.query_engine import create_query_engine
-from carver_feeds.carver_api import CarverAPIError, AuthenticationError
+from carver_feeds import create_query_engine, CarverAPIError, AuthenticationError
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -1036,19 +1034,20 @@ except Exception as e:
 | Entries (all) | ~10,000 | ~50-100 MB |
 | Hierarchical (with entries) | ~10,000 | ~100-200 MB |
 
-**Recommendation**: For large result sets, export to CSV and process externally rather than loading full DataFrame into context.
+**Recommendation**: For large result sets, export to CSV and process externally rather than loading full DataFrame into memory.
 
 ---
 
 ## Additional Resources
 
-- **Implementation Plan**: `/docs/implementation-plan.md` - Complete technical specifications
-- **Lessons Learned**: `/docs/LESSONS.md` - Gotchas and patterns discovered during implementation
-- **OpenAPI Spec**: `/docs/openapi-spec.json` - API specification (note: actual responses may differ)
-- **Examples**: `examples.md` - Comprehensive usage examples
+- **[User Guide](README.md)**: Complete SDK documentation and usage guide
+- **[Usage Examples](examples.md)**: 9 comprehensive examples covering common workflows
+- **[PyPI Package](https://pypi.org/project/carver-feeds-sdk/)**: Package information and version history
+- **[GitHub Repository](https://github.com/carveragents/carver-feeds-skill)**: Source code and issue tracking
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-10-25
+**Document Version**: 2.0
+**Last Updated**: 2025-10-26
+**SDK Version**: 0.1.0+
 **Status**: Production Ready
