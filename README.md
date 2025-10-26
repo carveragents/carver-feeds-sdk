@@ -200,8 +200,12 @@ topic_data = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123"
 
 ```bash
 # Clone repository
-git clone https://github.com/carveragents/carver-feeds-skill.git
-cd carver-feeds-skill
+git clone https://github.com/carveragents/carver-feeds-sdk.git
+cd carver-feeds-sdk
+
+# Create virtual environment
+python3.10 -m venv .venv
+source .venv/bin/activate
 
 # Install with dev dependencies
 pip install -e ".[dev]"
@@ -220,7 +224,7 @@ ruff check src/carver_feeds
 ### Project Structure
 
 ```
-carver-feeds-skill/
+carver-feeds-sdk/
 ├── src/carver_feeds/        # Main package source
 │   ├── __init__.py          # Package exports
 │   ├── carver_api.py        # API client
@@ -360,7 +364,7 @@ For issues, questions, or feature requests:
 
 - **API Reference**: [docs/api-reference.md](docs/api-reference.md)
 - **Examples**: [docs/examples.md](docs/examples.md)
-- **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-skill/issues)
+- **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-sdk/issues)
 
 ## License
 
