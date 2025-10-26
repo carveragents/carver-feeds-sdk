@@ -1,1 +1,0 @@
-To use this repo as a Claude skill, place the contents of `skill/` folder in this directory. Claude will automatically install the dependencies and set up the environment when needed.
