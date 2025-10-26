@@ -74,7 +74,7 @@ The API enforces rate limits. The client includes automatic retry logic with exp
 
 **Python Usage**:
 ```python
-from scripts.carver_api import get_client
+from carver_feeds.carver_api import get_client
 
 client = get_client()
 topics = client.list_topics()
@@ -116,7 +116,7 @@ topics = client.list_topics()
 feeds = client.list_feeds()
 
 # To filter by topic, use the data manager which does client-side filtering
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 dm = create_data_manager()
 topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
 ```
@@ -341,7 +341,7 @@ Hierarchical views merge topics, feeds, and optionally entries into a single den
 
 **Initialization**:
 ```python
-from scripts.carver_api import CarverFeedsAPIClient
+from carver_feeds.carver_api import CarverFeedsAPIClient
 
 client = CarverFeedsAPIClient(
     base_url="https://app.carveragents.ai",
@@ -428,7 +428,7 @@ Factory function to create client from environment variables.
 
 **Example**:
 ```python
-from scripts.carver_api import get_client
+from carver_feeds.carver_api import get_client
 
 client = get_client()  # Uses .env configuration
 topics = client.list_topics()
@@ -442,8 +442,8 @@ topics = client.list_topics()
 
 **Initialization**:
 ```python
-from scripts.data_manager import FeedsDataManager
-from scripts.carver_api import get_client
+from carver_feeds.data_manager import FeedsDataManager
+from carver_feeds.carver_api import get_client
 
 client = get_client()
 dm = FeedsDataManager(client)
@@ -557,7 +557,7 @@ Factory function to create data manager from environment configuration.
 
 **Example**:
 ```python
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 
 dm = create_data_manager()  # Uses .env for API key
 topics = dm.get_topics_df()
@@ -571,8 +571,8 @@ topics = dm.get_topics_df()
 
 **Initialization**:
 ```python
-from scripts.query_engine import EntryQueryEngine
-from scripts.data_manager import create_data_manager
+from carver_feeds.query_engine import EntryQueryEngine
+from carver_feeds.data_manager import create_data_manager
 
 dm = create_data_manager()
 qe = EntryQueryEngine(dm)
@@ -781,7 +781,7 @@ Factory function to create query engine from environment configuration.
 
 **Example**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()  # Uses .env for API key
 results = qe.search_entries("regulation").to_dataframe()
@@ -794,7 +794,7 @@ results = qe.search_entries("regulation").to_dataframe()
 ### Pattern 1: Basic Topic Exploration
 
 ```python
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 
 dm = create_data_manager()
 
@@ -812,7 +812,7 @@ print(f"Feeds in topic: {len(feeds_df)}")
 ### Pattern 2: Keyword Search with Filters
 
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime
 
 qe = create_query_engine()
@@ -832,7 +832,7 @@ print(results[['entry_title', 'feed_name', 'entry_published_at']].head())
 ### Pattern 3: Feed-Specific Analysis
 
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()
 
@@ -849,7 +849,7 @@ print(monthly_counts.tail(6))
 ### Pattern 4: Export Workflow
 
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()
 
@@ -870,7 +870,7 @@ print(f"Exported {len(df)} entries to CSV at {csv_path}")
 ### Pattern 5: Multi-Topic Comparison
 
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 import pandas as pd
 
 qe = create_query_engine()
@@ -890,7 +890,7 @@ print(topic_counts)
 ### Pattern 6: Optimized Large Query
 
 ```python
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 
 dm = create_data_manager()
 
@@ -921,7 +921,7 @@ print(f"Found {len(keyword_matches)} matching entries")
 
 **Example**:
 ```python
-from scripts.carver_api import get_client, AuthenticationError
+from carver_feeds.carver_api import get_client, AuthenticationError
 
 try:
     client = get_client()
@@ -943,8 +943,8 @@ except AuthenticationError as e:
 ### Error Handling Best Practices
 
 ```python
-from scripts.query_engine import create_query_engine
-from scripts.carver_api import CarverAPIError, AuthenticationError
+from carver_feeds.query_engine import create_query_engine
+from carver_feeds.carver_api import CarverAPIError, AuthenticationError
 import logging
 
 logging.basicConfig(level=logging.INFO)

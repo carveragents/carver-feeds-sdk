@@ -1,241 +1,185 @@
-# Carver Feeds Skill and API
+# Carver Feeds SDK
 
-A Claude skill and a set of python scripts that enables fetching, analyzing, and querying regulatory feed data from the Carver platform.
+[![PyPI version](https://badge.fury.io/py/carver-feeds-sdk.svg)](https://badge.fury.io/py/carver-feeds-sdk)
+[![Python Support](https://img.shields.io/pypi/pyversions/carver-feeds-sdk.svg)](https://pypi.org/project/carver-feeds-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+A powerful Python SDK for the Carver Feeds API, enabling seamless access to regulatory feed data with advanced querying, filtering, and data analysis capabilities.
 
-The carver-feeds-api-skill provides comprehensive capabilities for working with regulatory feed data, and can be used as a Claude skill or a python script.
+## Features
 
-- **Data Fetching**: Retrieve topics, feeds, and entries from the Carver API
-- **Hierarchical Views**: Construct pandas DataFrames showing topic → feed → entry relationships
-- **Advanced Querying**: Search and filter entries with method chaining and lazy loading
-- **Multiple Export Formats**: Export results to DataFrame, CSV, JSON, or dictionary formats
+- **Comprehensive API Client**: Full support for all Carver Feeds API endpoints with authentication, retry logic, and error handling
+- **DataFrame Integration**: Convert API responses to pandas DataFrames for easy data analysis
+- **Advanced Query Engine**: Fluent API with method chaining for building complex queries
 - **Optimized Performance**: Smart endpoint selection and caching for efficient data access
+- **Type Safety**: Full type hints throughout the codebase for better IDE support
+- **Production Ready**: Comprehensive error handling, logging, and extensive documentation
+
+## Installation
+
+```bash
+pip install carver-feeds-sdk
+```
+
+## Quick Start
+
+### 1. Configuration
+
+Create a `.env` file in your project directory:
+
+```bash
+CARVER_API_KEY=your_api_key_here
+CARVER_BASE_URL=https://app.carveragents.ai  # optional
+```
+
+### 2. Basic Usage
+
+```python
+from carver_feeds import get_client
+
+# Initialize client from environment variables
+client = get_client()
+
+# Fetch topics
+topics = client.list_topics()
+print(f"Found {len(topics)} topics")
+
+# Fetch feeds
+feeds = client.list_feeds()
+print(f"Found {len(feeds)} feeds")
+```
+
+### 3. Using DataFrames
+
+```python
+from carver_feeds import create_data_manager
+
+# Create data manager
+dm = create_data_manager()
+
+# Get topics as DataFrame
+topics_df = dm.get_topics_df()
+print(topics_df[['id', 'name', 'is_active']].head())
+
+# Get entries for a specific feed
+entries_df = dm.get_entries_df(feed_id="feed-123")
+print(f"Found {len(entries_df)} entries")
+```
+
+### 4. Advanced Querying
+
+```python
+from carver_feeds import create_query_engine
+from datetime import datetime
+
+# Create query engine
+qe = create_query_engine()
+
+# Build complex query with method chaining
+results = qe \
+    .filter_by_topic(topic_name="Banking") \
+    .filter_by_date(start_date=datetime(2024, 1, 1)) \
+    .search_entries("regulation") \
+    .to_dataframe()
+
+print(f"Found {len(results)} matching entries")
+
+# Export results
+qe.to_csv("results.csv")
+qe.to_json("results.json")
+```
+
+## Core Components
+
+### API Client (`CarverFeedsAPIClient`)
+
+Low-level API client with comprehensive error handling:
+
+- X-API-Key authentication
+- Automatic pagination
+- Exponential backoff retry logic
+- Support for all API endpoints
+
+### Data Manager (`FeedsDataManager`)
+
+Converts API responses to pandas DataFrames:
+
+- JSON to DataFrame conversion
+- Hierarchical data views (topic → feed → entry)
+- Schema validation and missing field handling
+- Optimized endpoint selection
+
+### Query Engine (`EntryQueryEngine`)
+
+High-level query interface with fluent API:
+
+- Method chaining for complex queries
+- Filter by topic, feed, date range, and status
+- Keyword search across multiple fields
+- Multiple export formats (DataFrame, CSV, JSON, dict)
+- Lazy loading for better performance
+
+## Documentation
+
+- **[Complete Documentation](docs/README.md)**: Full SDK documentation
+- **[API Reference](docs/api-reference.md)**: Detailed API endpoint and module reference
+- **[Usage Examples](docs/examples.md)**: 9 comprehensive examples covering common workflows
 
 ## Requirements
 
 - Python 3.10 or higher
-- Virtual environment (recommended)
-- Carver API key
+- pandas >= 2.0.0
+- requests >= 2.31.0
+- See [pyproject.toml](pyproject.toml) for complete dependency list
 
-## Pre-requisites
+## Development
 
-### 1. Installation
-
-```bash
-# Make a project directory
-mkdir /path/to/carver-feeds-api-skill
-cd /path/to/carver-feeds-api-skill
-
-# Get the repo
-git clone https://github.com/carveragents/carver-feeds-api-skill.git .
-
-# Navigate to the skill directory
-# Everything useful is here
-cd skill
-
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On macOS/Linux
-# .venv\Scripts\activate   # On Windows
-
-# Install dependencies
-# OR just ask Claude to execute a task and it will automatically install the dependencies
-pip install -r requirements.txt
-```
-
-### 2. Configuration
+### Install for Development
 
 ```bash
-# Copy environment template
-cp .env.example .env
+# Clone repository
+git clone https://github.com/carveragents/carver-feeds-skill.git
+cd carver-feeds-skill
 
-# Edit .env and add your API key
-# CARVER_API_KEY=your_actual_api_key_here
-# CARVER_BASE_API_URL=carver_base_api_url_here
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run type checking
+mypy src/carver_feeds
+
+# Format code
+black src/carver_feeds
+ruff check src/carver_feeds
 ```
 
-**Important**: Obtain your API key from your Carver account settings. Never commit `.env` to version control.
-
-## Usage Examples
-
-### Python scripts
-
-#### Example 1: Get All Topics, Feeds, and Entries
-
-```python
-from scripts.data_manager import create_data_manager
-
-dm = create_data_manager()
-
-# Get all topics
-topics_df = dm.get_topics_df()
-print(f"Total topics: {len(topics_df)}")
-print(topics_df[['id', 'name', 'is_active']].head())
-
-# Get all feeds
-feeds_df = dm.get_feeds_df()
-print(f"\nTotal feeds: {len(feeds_df)}")
-print(feeds_df[['id', 'name', 'topic_name', 'is_active']].head())
-
-# Get all entries (warning: this may be slow and fetch a lot of data)
-# For production use, always filter by topic_id or feed_id first
-entries_df = dm.get_entries_df(fetch_all=True)
-print(f"\nTotal entries: {len(entries_df)}")
-print(entries_df[['id', 'title', 'published_at']].head())
-```
-
-#### Example 2: List Topics, Feeds, and Entries for a Topic
-
-```python
-from scripts.data_manager import create_data_manager
-
-dm = create_data_manager()
-
-# Get all topics
-topics_df = dm.get_topics_df()
-print(f"Available topics: {len(topics_df)}")
-print(topics_df[['id', 'name', 'is_active']].head())
-
-# Get feeds for a specific topic
-selected_topic_id = topics_df['id'].iloc[0]
-selected_topic_name = topics_df['name'].iloc[0]
-topic_feeds = dm.get_feeds_df(topic_id=selected_topic_id)
-print(f"\nFeeds in topic '{selected_topic_name}' (id {selected_topic_id}): {len(topic_feeds)}")
-print(topic_feeds[['id', 'name', 'is_active']].head())
-
-# Get entries for one of the feeds
-if len(topic_feeds) > 0:
-    selected_feed_id = topic_feeds['id'].iloc[0]
-    selected_feed_name = topic_feeds['name'].iloc[0]
-    feed_entries = dm.get_entries_df(feed_id=selected_feed_id)
-    print(f"\nEntries in feed '{selected_feed_name}' (id {selected_feed_id}): {len(feed_entries)}")
-    print(feed_entries[['id', 'title', 'published_at']].head())
-```
-
-#### Example 3: Complex Multi-Filter Query
-
-```python
-from scripts.query_engine import create_query_engine
-from datetime import datetime
-
-qe = create_query_engine()
-
-# Find entries with multiple filters
-results = qe \
-    .filter_by_topic(topic_name="Ireland") \ # any topics containing Ireland
-    .filter_by_feed(feed_name="news") \ # any feeds containing news
-    .filter_by_active(is_active=True) \ # only active feeds
-    .filter_by_date(start_date=datetime(2024, 1, 1)) \ # only entries after 2024-01-01
-    .search_entries(["regulation", "compliance"], match_all=False) \ # any entries containing regulation or compliance
-    .to_dataframe()
-
-print(f"Found {len(results)} entries matching all criteria")
-
-# Export to CSV
-csv_path = qe.to_csv("ireland_news_2024.csv")
-print(f"Exported to {csv_path}")
-```
-
-### Claude Skill
-
-If using as a Claude skill, place the contents of `skill` folder in this repo into the `skills` directory of your `.claude` directory. Claude will automatically install the dependencies and set up the environment when needed.
-
-#### Example 1: Single query
-
-```bash
-claude> List all topics available in the Carver platform.
-```
-
-#### Example 2: Follow up queries
-
-```bash
-claude> Get me all feed names that have the word News in the title from any Ireland related topics
-...
-...
-...
-claude> OK, now get me all the entries from this feed
-```
-
-**See [SKILL.md](skill/SKILL.md) for complete usage instructions and [examples.md](skill/examples.md) for 9 comprehensive usage examples.**
-
-## Documentation
-
-- **[SKILL.md](skill/SKILL.md)**: Main skill entry point - when to use, core operations, quick examples
-- **[reference.md](skill/reference.md)**: Complete API reference - endpoints, schemas, module documentation
-- **[examples.md](skill/examples.md)**: Comprehensive usage examples - 9 detailed examples covering common workflows
-
-## Project Structure
+### Project Structure
 
 ```
-carver-feeds-api-skill/
-├── README.md                 # Project overview (this file)
-├── LICENSE                   # MIT License
-├── .gitignore                # Git ignore rules
-├── .claude/                  # Claude Code integration
-│   └── skills/
-│       └── carver-api-skill/ # Claude skill configuration
-└── skill/                    # Main skill implementation
-    ├── SKILL.md              # Skill documentation and entry point
-    ├── reference.md          # API reference documentation
-    ├── examples.md           # Usage examples
-    ├── requirements.txt      # Python dependencies
-    ├── .env.example          # Environment configuration template
-    └── scripts/              # Python modules
-        ├── __init__.py       # Package initialization
-        ├── carver_api.py     # API client module
-        ├── data_manager.py   # DataFrame construction
-        ├── query_engine.py   # Search & filtering
-        └── utils.py          # Shared utilities
+carver-feeds-skill/
+├── src/carver_feeds/        # Main package source
+│   ├── __init__.py          # Package exports
+│   ├── carver_api.py        # API client
+│   ├── data_manager.py      # DataFrame construction
+│   ├── query_engine.py      # Query interface
+│   └── utils.py             # Utilities
+├── tests/                   # Test suite
+├── docs/                    # Documentation
+├── examples/                # Example scripts
+└── pyproject.toml           # Package configuration
 ```
-
-## Key Features
-
-### 1. Comprehensive API Client
-- Authentication via X-API-Key header
-- Automatic pagination handling (limit/offset pattern)
-- Exponential backoff retry logic for rate limits and errors
-- Support for 5 API endpoints including optimized topic/feed-specific endpoints
-
-### 2. DataFrame-Based Data Management
-- Convert API responses to pandas DataFrames
-- Build hierarchical views (topic → feed → entry relationships)
-- Flexible schema handling (gracefully handles missing/extra columns)
-- Optimized endpoint selection for better performance
-
-### 3. Powerful Query Engine
-- Method chaining for building complex queries
-- Lazy loading (data fetched only when needed)
-- Keyword search with AND/OR logic across multiple fields
-- Filter by topic, feed, date range, and active status
-- Export to multiple formats (DataFrame, CSV, JSON, dict)
-
-### 4. Production-Ready Implementation
-- Comprehensive error handling with helpful messages
-- Extensive documentation (SKILL.md, reference.md, examples.md)
-- Type hints throughout codebase
-- Logging at appropriate levels
-
-## Module Reference
-
-### scripts.carver_api
-API client with authentication, pagination, and retry logic. See [reference.md](skill/reference.md#scriptscarver_api) for details.
-
-### scripts.data_manager
-DataFrame construction and hierarchical views. See [reference.md](skill/reference.md#scriptsdata_manager) for details.
-
-### scripts.query_engine
-Search and filtering with method chaining. See [reference.md](skill/reference.md#scriptsquery_engine) for details.
 
 ## Performance Tips
 
-1. **Filter by topic or feed first**: Use optimized endpoints when possible
+1. **Use specific endpoints**: Filter by topic/feed ID when possible
    ```python
-   # Slow: fetch all, then filter
+   # Slow: fetch all entries, then filter
    all_entries = dm.get_entries_df()
    filtered = all_entries[all_entries['feed_id'] == 'feed-456']
 
-   # Fast: filter at API
+   # Fast: use optimized endpoint
    filtered = dm.get_entries_df(feed_id='feed-456')
    ```
 
@@ -246,30 +190,39 @@ Search and filtering with method chaining. See [reference.md](skill/reference.md
    results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
    ```
 
-3. **Use lazy loading**: Query engine only fetches when needed
+3. **Leverage lazy loading**: Query engine only fetches when needed
    ```python
    qe = create_query_engine()  # No API call yet
    results = qe.search_entries("regulation")  # API call happens here
    ```
 
-## Troubleshooting
+## Error Handling
 
-| Issue | Solution |
-|-------|----------|
-| `ModuleNotFoundError` | Activate virtual environment: `source .venv/bin/activate` |
-| `AuthenticationError` | Check `.env` file exists and `CARVER_API_KEY` is set |
-| Empty results | Verify filters are correct, try broadening search |
-| Slow queries | Filter by feed/topic first, use optimized endpoints |
+The SDK provides specific exception types for different error scenarios:
 
-**For detailed troubleshooting, see [SKILL.md](skill/SKILL.md#common-issues-and-solutions).**
+```python
+from carver_feeds import get_client, CarverAPIError, AuthenticationError, RateLimitError
+
+try:
+    client = get_client()
+    topics = client.list_topics()
+except AuthenticationError:
+    print("Invalid API key. Check your .env file.")
+except RateLimitError:
+    print("Rate limit exceeded. Please wait before retrying.")
+except CarverAPIError as e:
+    print(f"API error: {e}")
+```
 
 ## Contributing
 
 We welcome contributions! Please follow these guidelines:
 
-1. **Fork the repository** and create a feature branch
-4. **Update documentation** as needed
-5. **Submit a pull request** with a clear description
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Run the test suite and type checking
+5. Submit a pull request
 
 ## License
 
@@ -277,5 +230,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For issues or questions:
-- Review documentation: [SKILL.md](skill/SKILL.md), [reference.md](skill/reference.md), [examples.md](skill/examples.md)
+For issues, questions, or feature requests:
+
+- **Documentation**: [docs/README.md](docs/README.md)
+- **API Reference**: [docs/api-reference.md](docs/api-reference.md)
+- **Examples**: [docs/examples.md](docs/examples.md)
+- **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-skill/issues)
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
+
+---
+
+**Note**: This SDK requires a valid Carver API key. Visit [Carver Agents](https://carveragents.ai) to obtain your API key.

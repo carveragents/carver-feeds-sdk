@@ -38,7 +38,7 @@ source .venv/bin/activate
 The primary use case is searching and filtering feed entries. Use the `EntryQueryEngine` for all query operations:
 
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 # Initialize query engine (uses .env for API key)
 qe = create_query_engine()
@@ -64,7 +64,7 @@ results = qe \
 For metadata exploration, use the `FeedsDataManager`:
 
 ```python
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 
 # Initialize data manager
 dm = create_data_manager()
@@ -111,7 +111,7 @@ topic_hierarchy = dm.get_hierarchical_view(
 
 ### Example 1: Find Recent Banking Regulations
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime
 
 qe = create_query_engine()
@@ -277,7 +277,7 @@ For most user requests, follow this pattern:
 
 Example:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime
 
 qe = create_query_engine()

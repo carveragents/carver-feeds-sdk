@@ -3,17 +3,26 @@ Data Manager Module
 
 This module handles converting API responses to pandas DataFrames
 and building hierarchical views of the data.
+
+Example:
+    >>> from carver_feeds import create_data_manager
+    >>> dm = create_data_manager()
+    >>> topics_df = dm.get_topics_df()
+    >>> entries_df = dm.get_entries_df(fetch_all=True)
 """
 
 from typing import Dict, List, Optional, Any
 import logging
 import pandas as pd
-from scripts.carver_api import CarverFeedsAPIClient, get_client, CarverAPIError
+from carver_feeds.carver_api import CarverFeedsAPIClient, get_client, CarverAPIError
 
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure module logger (library should not configure logging)
 logger = logging.getLogger(__name__)
+
+
+# Data Manager Configuration Constants
+DEFAULT_FETCH_LIMIT = 1000
 
 
 class FeedsDataManager:
@@ -34,7 +43,7 @@ class FeedsDataManager:
         api_client: CarverFeedsAPIClient instance for API interactions
 
     Example:
-        >>> from scripts.data_manager import create_data_manager
+        >>> from carver_feeds import create_data_manager
         >>> dm = create_data_manager()
         >>> topics_df = dm.get_topics_df()
         >>> entries_df = dm.get_entries_df(fetch_all=True)
@@ -248,7 +257,7 @@ class FeedsDataManager:
                 # Use get_feed_entries which returns entries for specific feed
                 entries_data = self.api_client.get_feed_entries(
                     feed_id=feed_id,
-                    limit=1000  # Large limit to get all entries for one feed
+                    limit=DEFAULT_FETCH_LIMIT  # Large limit to get all entries for one feed
                 )
                 # Add feed_id to each entry since endpoint doesn't include it
                 entries_data = [dict(entry, feed_id=feed_id) for entry in entries_data]
@@ -256,7 +265,7 @@ class FeedsDataManager:
                 # Use get_topic_entries which returns entries for specific topic
                 entries_data = self.api_client.get_topic_entries(
                     topic_id=topic_id,
-                    limit=1000  # Large limit to get all entries for one topic
+                    limit=DEFAULT_FETCH_LIMIT  # Large limit to get all entries for one topic
                 )
                 # Note: topic endpoint returns entries with feed_id already included
             else:
@@ -409,7 +418,7 @@ class FeedsDataManager:
                         # Fetch entries for this specific feed
                         feed_entries = self.api_client.get_feed_entries(
                             feed_id=current_feed_id,
-                            limit=1000
+                            limit=DEFAULT_FETCH_LIMIT
                         )
 
                         # Add feed and topic metadata to each entry
@@ -570,7 +579,7 @@ def create_data_manager() -> FeedsDataManager:
         AuthenticationError: If CARVER_API_KEY is not set
 
     Example:
-        >>> from scripts.data_manager import create_data_manager
+        >>> from carver_feeds import create_data_manager
         >>> dm = create_data_manager()
         >>> topics = dm.get_topics_df()
         >>> print(f"Found {len(topics)} topics")

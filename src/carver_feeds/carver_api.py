@@ -3,6 +3,22 @@ Carver Feeds API Client Module
 
 This module provides a client for interacting with the Carver Feeds API.
 Handles authentication, pagination, retry logic, and error handling.
+
+Example:
+    Basic usage with environment variables:
+
+    >>> from carver_feeds import get_client
+    >>> client = get_client()
+    >>> topics = client.list_topics()
+
+    Direct instantiation:
+
+    >>> from carver_feeds import CarverFeedsAPIClient
+    >>> client = CarverFeedsAPIClient(
+    ...     base_url="https://app.carveragents.ai",
+    ...     api_key="your-api-key"
+    ... )
+    >>> feeds = client.list_feeds()
 """
 
 from typing import Dict, List, Optional, Any
@@ -14,9 +30,16 @@ import requests
 from dotenv import load_dotenv
 
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure module logger (library should not configure logging)
 logger = logging.getLogger(__name__)
+
+
+# API Configuration Constants
+DEFAULT_BASE_URL = "https://app.carveragents.ai"
+DEFAULT_PAGE_LIMIT = 1000
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_TIMEOUT_SECONDS = 30
+RETRY_BACKOFF_FACTOR = 2
 
 
 class CarverAPIError(Exception):
@@ -45,9 +68,9 @@ class CarverFeedsAPIClient:
     - Comprehensive error handling
 
     Args:
-        base_url: Base URL for the Carver API (e.g., https://app.carveragents.ai)
+        base_url: Base URL for the Carver API (e.g., DEFAULT_BASE_URL)
         api_key: API key for authentication
-        max_retries: Maximum number of retries for failed requests
+        max_retries: Maximum number of retries for failed requests (default: DEFAULT_MAX_RETRIES)
         initial_retry_delay: Initial delay in seconds for retry backoff
     """
 
@@ -55,7 +78,7 @@ class CarverFeedsAPIClient:
         self,
         base_url: str,
         api_key: str,
-        max_retries: int = 3,
+        max_retries: int = DEFAULT_MAX_RETRIES,
         initial_retry_delay: float = 1.0
     ):
         """Initialize client with base URL and API key."""
@@ -109,7 +132,7 @@ class CarverFeedsAPIClient:
                 method=method,
                 url=url,
                 params=params,
-                timeout=30
+                timeout=DEFAULT_TIMEOUT_SECONDS
             )
 
             # Handle different status codes
@@ -188,8 +211,8 @@ class CarverFeedsAPIClient:
         Returns:
             Delay in seconds
         """
-        # Exponential backoff: initial_delay * (2 ^ retry_count)
-        delay = self.initial_retry_delay * (2 ** retry_count)
+        # Exponential backoff: initial_delay * (RETRY_BACKOFF_FACTOR ^ retry_count)
+        delay = self.initial_retry_delay * (RETRY_BACKOFF_FACTOR ** retry_count)
         # Add jitter: random value between 0 and 25% of delay
         jitter = random.uniform(0, delay * 0.25)
         return delay + jitter
@@ -198,7 +221,7 @@ class CarverFeedsAPIClient:
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-        limit: int = 1000,
+        limit: int = DEFAULT_PAGE_LIMIT,
         fetch_all: bool = True
     ) -> List[Dict]:
         """
@@ -255,6 +278,7 @@ class CarverFeedsAPIClient:
             List of topic dictionaries
 
         Example:
+            >>> from carver_feeds import get_client
             >>> client = get_client()
             >>> topics = client.list_topics()
             >>> print(f"Found {len(topics)} topics")
@@ -273,6 +297,7 @@ class CarverFeedsAPIClient:
             List of feed dictionaries
 
         Example:
+            >>> from carver_feeds import get_client
             >>> client = get_client()
             >>> feeds = client.list_feeds()
             >>> # Filter client-side by topic_id
@@ -285,7 +310,7 @@ class CarverFeedsAPIClient:
         self,
         feed_id: Optional[str] = None,
         is_active: Optional[bool] = None,
-        limit: int = 1000,
+        limit: int = DEFAULT_PAGE_LIMIT,
         fetch_all: bool = False
     ) -> List[Dict]:
         """
@@ -301,6 +326,7 @@ class CarverFeedsAPIClient:
             List of entry dictionaries
 
         Example:
+            >>> from carver_feeds import get_client
             >>> client = get_client()
             >>> # Fetch all entries (paginated)
             >>> all_entries = client.list_entries(fetch_all=True)
@@ -323,7 +349,7 @@ class CarverFeedsAPIClient:
         )
         return self._paginate('/api/v1/feeds/entries/list', params, limit, fetch_all)
 
-    def get_feed_entries(self, feed_id: str, limit: int = 1000) -> List[Dict]:
+    def get_feed_entries(self, feed_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> List[Dict]:
         """
         Get entries for specific feed from /api/v1/feeds/{feed_id}/entries.
 
@@ -335,6 +361,7 @@ class CarverFeedsAPIClient:
             List of entry dictionaries
 
         Example:
+            >>> from carver_feeds import get_client
             >>> client = get_client()
             >>> entries = client.get_feed_entries("feed-123", limit=50)
         """
@@ -350,7 +377,7 @@ class CarverFeedsAPIClient:
             return response.get('items', [])
         return response
 
-    def get_topic_entries(self, topic_id: str, limit: int = 1000) -> List[Dict]:
+    def get_topic_entries(self, topic_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> List[Dict]:
         """
         Get entries for a specific topic.
 
@@ -368,6 +395,8 @@ class CarverFeedsAPIClient:
             ValueError: If topic_id is not provided
 
         Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
             >>> entries = client.get_topic_entries("topic-123", limit=50)
         """
         if not topic_id:
@@ -383,11 +412,14 @@ class CarverFeedsAPIClient:
         return response
 
 
-def get_client() -> CarverFeedsAPIClient:
+def get_client(load_from_env: bool = True) -> CarverFeedsAPIClient:
     """
     Factory function to create API client from environment variables.
 
     Loads configuration from .env file and creates a CarverFeedsAPIClient instance.
+
+    Args:
+        load_from_env: If True, automatically load from .env file (default: True)
 
     Environment Variables:
         CARVER_API_KEY: API key for authentication (required)
@@ -401,14 +433,16 @@ def get_client() -> CarverFeedsAPIClient:
 
     Example:
         >>> # Create .env file with CARVER_API_KEY=your_key_here
+        >>> from carver_feeds import get_client
         >>> client = get_client()
         >>> topics = client.list_topics()
     """
-    # Load environment variables from .env file
-    load_dotenv()
+    # Load environment variables from .env file if requested
+    if load_from_env:
+        load_dotenv()
 
     api_key = os.getenv('CARVER_API_KEY')
-    base_url = os.getenv('CARVER_BASE_URL', 'https://app.carveragents.ai')
+    base_url = os.getenv('CARVER_BASE_URL', DEFAULT_BASE_URL)
 
     if not api_key:
         raise AuthenticationError(

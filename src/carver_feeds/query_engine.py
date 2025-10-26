@@ -3,18 +3,30 @@ Query Engine Module
 
 This module provides search and filtering capabilities for feed entries.
 Implements a fluent interface pattern for method chaining.
+
+Example:
+    >>> from carver_feeds import create_query_engine
+    >>> from datetime import datetime
+    >>> qe = create_query_engine()
+    >>> results = qe.filter_by_topic(topic_name="Banking") \\
+    ...     .filter_by_date(start_date=datetime(2024, 1, 1)) \\
+    ...     .search_entries(["regulation", "compliance"]) \\
+    ...     .to_dataframe()
 """
 
 from typing import List, Optional, Union
 from datetime import datetime
 import logging
 import pandas as pd
-from scripts.data_manager import FeedsDataManager, create_data_manager
+from carver_feeds.data_manager import FeedsDataManager, create_data_manager
 
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure module logger (library should not configure logging)
 logger = logging.getLogger(__name__)
+
+
+# Query Engine Configuration Constants
+DEFAULT_SEARCH_FIELD = "entry_content_markdown"
 
 
 class EntryQueryEngine:
@@ -38,7 +50,8 @@ class EntryQueryEngine:
         data_manager: FeedsDataManager instance for data fetching
 
     Example:
-        >>> from scripts.query_engine import create_query_engine
+        >>> from carver_feeds import create_query_engine
+        >>> from datetime import datetime
         >>> qe = create_query_engine()
         >>> results = qe \\
         ...     .filter_by_topic(topic_name="Banking") \\
@@ -79,7 +92,7 @@ class EntryQueryEngine:
             self._initial_data_loaded = True
             logger.info(f"Loaded {len(self._results)} entries for querying")
 
-    def chain(self):
+    def chain(self) -> 'EntryQueryEngine':
         """
         Reset query to start fresh with all data.
 
@@ -104,21 +117,21 @@ class EntryQueryEngine:
     def search_entries(
         self,
         keywords: Union[str, List[str]],
-        search_fields: List[str] = ['entry_content_markdown'],
+        search_fields: Optional[List[str]] = None,
         case_sensitive: bool = False,
         match_all: bool = False
-    ):
+    ) -> 'EntryQueryEngine':
         """
         Search entries by keywords across specified fields.
 
         This method searches for keywords in the specified fields and returns
         matching entries. Supports both AND and OR logic for multiple keywords.
 
-        Priority field (as per implementation-plan.md): entry_content_markdown
+        Priority field (as per implementation-plan.md): DEFAULT_SEARCH_FIELD
 
         Args:
             keywords: Single keyword string or list of keywords to search for
-            search_fields: List of field names to search in. Defaults to ['entry_content_markdown'].
+            search_fields: List of field names to search in. Defaults to [DEFAULT_SEARCH_FIELD].
                           Can include: 'entry_title', 'entry_content_markdown', 'entry_link'
             case_sensitive: If True, perform case-sensitive search. Default: False
             match_all: If True, all keywords must match (AND logic).
@@ -141,6 +154,10 @@ class EntryQueryEngine:
             ... ).to_dataframe()
         """
         self._ensure_data_loaded()
+
+        # Use default search field if not provided
+        if search_fields is None:
+            search_fields = [DEFAULT_SEARCH_FIELD]
 
         # Convert single keyword to list
         if isinstance(keywords, str):
@@ -221,7 +238,7 @@ class EntryQueryEngine:
         self,
         topic_id: Optional[str] = None,
         topic_name: Optional[str] = None
-    ):
+    ) -> 'EntryQueryEngine':
         """
         Filter entries by topic (id or name).
 
@@ -339,7 +356,7 @@ class EntryQueryEngine:
         self,
         feed_id: Optional[str] = None,
         feed_name: Optional[str] = None
-    ):
+    ) -> 'EntryQueryEngine':
         """
         Filter entries by feed (id or name).
 
@@ -457,7 +474,7 @@ class EntryQueryEngine:
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None
-    ):
+    ) -> 'EntryQueryEngine':
         """
         Filter entries by date range.
 
@@ -526,7 +543,7 @@ class EntryQueryEngine:
         logger.info(f"Date filter returned {len(self._results)} entries")
         return self
 
-    def filter_by_active(self, is_active: bool = True):
+    def filter_by_active(self, is_active: bool = True) -> 'EntryQueryEngine':
         """
         Filter entries by active status.
 
@@ -655,7 +672,7 @@ def create_query_engine() -> EntryQueryEngine:
         AuthenticationError: If CARVER_API_KEY is not set
 
     Example:
-        >>> from scripts.query_engine import create_query_engine
+        >>> from carver_feeds import create_query_engine
         >>> qe = create_query_engine()
         >>> results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
     """

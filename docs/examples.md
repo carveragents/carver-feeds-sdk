@@ -24,7 +24,7 @@ This document provides practical, copy-pasteable examples for common use cases o
 
 **Code**:
 ```python
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 
 # Initialize data manager
 dm = create_data_manager()
@@ -69,7 +69,7 @@ Available Topics:
 
 **Code**:
 ```python
-from scripts.data_manager import create_data_manager
+from carver_feeds.data_manager import create_data_manager
 
 dm = create_data_manager()
 
@@ -123,7 +123,7 @@ Feeds in 'Banking Regulation':
 
 **Alternative - Search by Topic Name**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()
 
@@ -144,7 +144,7 @@ print(feeds.head(10))
 
 **Code**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()
 
@@ -219,7 +219,7 @@ print(f"Found {len(results)} entries mentioning crypto-related terms")
 
 **Code**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()
 
@@ -299,7 +299,7 @@ print(f"Banking: {len(banking_results)}, Healthcare: {len(healthcare_results)}")
 
 **Code**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime, timedelta
 
 qe = create_query_engine()
@@ -394,7 +394,7 @@ print(f"Found {len(results)} entries (OR logic - broader results)")
 
 **Code**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 import json
 
 qe = create_query_engine()
@@ -487,7 +487,7 @@ Searching for healthcare compliance entries...
 
 **Code**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime
 import pandas as pd
 
@@ -601,7 +601,7 @@ Yearly Summary:
 
 **Code**:
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -726,8 +726,8 @@ Comparison exported to: topic_comparison.csv
 
 **Code**:
 ```python
-from scripts.data_manager import create_data_manager
-from scripts.query_engine import create_query_engine
+from carver_feeds.data_manager import create_data_manager
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -904,7 +904,7 @@ broad = qe.search_entries(["banking", "finance", "credit"], match_all=False)
 
 ### Workflow 1: Daily Regulatory Brief
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 from datetime import datetime, timedelta
 
 qe = create_query_engine()
@@ -928,7 +928,7 @@ results.to_csv(f'daily_brief_{yesterday.strftime("%Y%m%d")}.csv', index=False)
 
 ### Workflow 2: Keyword Alert System
 ```python
-from scripts.query_engine import create_query_engine
+from carver_feeds.query_engine import create_query_engine
 
 qe = create_query_engine()
 
@@ -945,8 +945,8 @@ for keyword in alerts:
 
 ### Workflow 3: Topic Deep Dive
 ```python
-from scripts.data_manager import create_data_manager
-from scripts.query_engine import create_query_engine
+from carver_feeds.data_manager import create_data_manager
+from carver_feeds.query_engine import create_query_engine
 
 dm = create_data_manager()
 qe = create_query_engine()

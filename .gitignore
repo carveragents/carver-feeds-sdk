@@ -41,7 +41,6 @@ data/
 *.csv
 *.json
 *.parquet
-!docs/openapi-spec.json
 
 # Logs
 *.log
@@ -51,5 +50,7 @@ data/
 .coverage
 htmlcov/
 
-# Development
-docs/
+# Type checking
+.mypy_cache/
+.pytype/
+.pyre/
