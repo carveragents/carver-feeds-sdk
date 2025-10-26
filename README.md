@@ -4,7 +4,7 @@
 [![Python Support](https://img.shields.io/pypi/pyversions/carver-feeds-sdk.svg)](https://pypi.org/project/carver-feeds-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A powerful Python SDK for the Carver Feeds API, enabling seamless access to regulatory feed data with advanced querying, filtering, and data analysis capabilities.
+A Python SDK for the Carver Feeds API, enabling seamless access to regulatory feed data with advanced querying, filtering, and data analysis capabilities.
 
 ## Features
 
