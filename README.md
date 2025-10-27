@@ -1,12 +1,12 @@
 # Carver Feeds SDK
 
-[![PyPI version](https://badge.fury.io/py/carver-feeds-sdk.svg)](https://badge.fury.io/py/carver-feeds-sdk)
+![PyPI - Version](https://img.shields.io/pypi/v/carver-feeds-sdk)
 [![Python Support](https://img.shields.io/pypi/pyversions/carver-feeds-sdk.svg)](https://pypi.org/project/carver-feeds-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Python SDK for the Carver Feeds API, enabling seamless access to regulatory feed data with advanced querying, filtering, and data analysis capabilities.
+A Python SDK for the Carver Feeds API, enabling seamless access to regulatory feed data with querying, filtering, and data analysis capabilities.
 
-## Features
+## 🎯 Features
 
 - **Comprehensive API Client**: Full support for public Carver Feeds API endpoints with authentication, retry logic, and error handling
 - **DataFrame Integration**: Convert API responses to pandas DataFrames for easy data analysis
@@ -15,13 +15,28 @@ A Python SDK for the Carver Feeds API, enabling seamless access to regulatory fe
 - **Type Safety**: Full type hints throughout the codebase for better IDE support
 - **Production Ready**: Comprehensive error handling, logging, and extensive documentation
 
-## Installation
+## 🏢 About The SDK
+
+This SDK provides programmatic access to [Carver Feeds API](https://app.carveragents.ai/api-docs/), a real-time regulatory intelligence platform. The SDK helps compliance, risk, and legal teams monitor global regulatory developments, track sanctions and mandates, and receive actionable alerts—transforming regulatory monitoring from reactive dashboard checking into proactive intelligence delivery.
+
+## 👥 Who Is This For?
+
+**Compliance teams, risk analysts, and developers** building monitoring tools, compliance dashboards, or automated alert systems for regulatory risk management.
+
+## 💡 Use Cases
+
+- **Regulatory Intelligence**: Track regulatory changes across multiple jurisdictions in real-time
+- **Risk Assessment**: Analyze regulatory trends and emerging requirements affecting your business
+- **Automated Alerting**: Build systems that notify stakeholders when relevant regulations are published
+- **Research & Analysis**: Query historical regulatory data for trend analysis and reporting
+
+## 📦 Installation
 
 ```bash
 pip install carver-feeds-sdk
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Configuration
 
@@ -89,7 +104,7 @@ qe.to_csv("results.csv")
 qe.to_json("results.json")
 ```
 
-## Core Components
+## 🏗️ Core Components
 
 ### API Client (`CarverFeedsAPIClient`)
 
@@ -119,7 +134,7 @@ High-level query interface with fluent API:
 - Multiple export formats (DataFrame, CSV, JSON, dict)
 - Lazy loading with automatic endpoint optimization
 
-## Data Model
+## 📊 Data Model
 
 The SDK works with three main entities in a hierarchical structure:
 
@@ -136,7 +151,7 @@ Entry (individual articles/entries)
 - **Feed**: `id`, `name`, `url`, `topic_id`, `topic_name`, `is_active`, timestamps
 - **Entry**: `id`, `title`, `link`, `content_markdown`, `description`, `published_at`, `feed_id`, `is_active`, timestamps
 
-## Advanced Features
+## ⚡ Advanced Features
 
 ### Keyword Search
 
@@ -182,19 +197,19 @@ full = dm.get_hierarchical_view(include_entries=True, feed_id="feed-456")
 topic_data = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123")
 ```
 
-## Documentation
+## 📚 Documentation
 
 - **[API Reference](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/api-reference.md)**: Detailed API endpoint and module reference
-- **[Usage Examples](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)**: 9 comprehensive examples covering common workflows
+- **[Usage Examples](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)**: A collection of comprehensive examples covering common workflows
 
-## Requirements
+## 📋 Requirements
 
 - Python 3.10 or higher
 - pandas >= 2.0.0
 - requests >= 2.31.0
 - See [pyproject.toml](pyproject.toml) for complete dependency list
 
-## Development
+## 🔧 Development
 
 ### Install for Development
 
@@ -221,7 +236,7 @@ black src/carver_feeds
 ruff check src/carver_feeds
 ```
 
-### Publishing to PyPI
+### 🚢 Publishing to PyPI
 
 ```bash
 # Install packaging tools
@@ -273,7 +288,7 @@ carver-feeds-sdk/
 └── pyproject.toml           # Package configuration
 ```
 
-## Performance Optimization
+## 📈 Performance Optimization
 
 ### 1. Filter Before Loading
 
@@ -329,7 +344,7 @@ dm = create_data_manager()
 entries = dm.get_entries_df(feed_id='feed-456')  # Direct endpoint call
 ```
 
-## Error Handling
+## ⚠️ Error Handling
 
 The SDK provides specific exception types for different error scenarios:
 
@@ -347,7 +362,7 @@ except CarverAPIError as e:
     print(f"API error: {e}")
 ```
 
-## Best Practices
+## ✅ Best Practices
 
 1. **Use factory functions** for automatic environment configuration:
    ```python
@@ -384,7 +399,7 @@ except CarverAPIError as e:
    results.to_csv("banking_entries.csv")  # Saves ~50-100 MB to disk
    ```
 
-## Contributing
+## 🤝 Contributing
 
 We welcome contributions! Please follow these guidelines:
 
@@ -394,7 +409,7 @@ We welcome contributions! Please follow these guidelines:
 4. Run the test suite and type checking
 5. Submit a pull request
 
-## Support
+## 💬 Support
 
 For issues, questions, or feature requests:
 
@@ -402,11 +417,11 @@ For issues, questions, or feature requests:
 - **Examples**: [docs/examples.md](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)
 - **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-sdk/issues)
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Changelog
+## 📝 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
