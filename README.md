@@ -184,8 +184,8 @@ topic_data = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123"
 
 ## Documentation
 
-- **[API Reference](docs/api-reference.md)**: Detailed API endpoint and module reference
-- **[Usage Examples](docs/examples.md)**: 9 comprehensive examples covering common workflows
+- **[API Reference](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/api-reference.md)**: Detailed API endpoint and module reference
+- **[Usage Examples](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)**: 9 comprehensive examples covering common workflows
 
 ## Requirements
 
@@ -221,19 +221,55 @@ black src/carver_feeds
 ruff check src/carver_feeds
 ```
 
+### Publishing to PyPI
+
+```bash
+# Install packaging tools
+python -m pip install --upgrade build twine
+
+# Clean old artifacts
+rm -rf dist build *.egg-info
+
+# Build source and wheel distributions
+python -m build
+
+# Upload to PyPI (use PYPI_API_TOKEN or .pypirc for credentials)
+python -m twine upload dist/*
+```
+
+### Version Management
+
+We use [`bumpversion`](https://github.com/c4urself/bumpversion) to keep every version reference in sync.
+
+```bash
+# Install once (included in dev extras)
+python -m pip install bumpversion
+
+# Bump patch/minor/major as needed
+bumpversion patch   # or minor / major
+
+# Inspect the changes, update CHANGELOG.md, then build + upload
+git status
+```
+
+The `.bumpversion.cfg` file updates `pyproject.toml`, `src/carver_feeds/__version__.py`, and the SDK version strings in the docs in one command. After bumping, add a new changelog entry with the chosen version before publishing.
+
 ### Project Structure
 
 ```
 carver-feeds-sdk/
 ├── src/carver_feeds/        # Main package source
-│   ├── __init__.py          # Package exports
+│   ├── __init__.py          # Public package exports
+│   ├── __version__.py       # Version metadata
 │   ├── carver_api.py        # API client
-│   ├── data_manager.py      # DataFrame construction
+│   ├── data_manager.py      # DataFrame construction helpers
 │   ├── query_engine.py      # Query interface
-│   └── utils.py             # Utilities
+│   └── py.typed             # PEP 561 marker for type checking
 ├── tests/                   # Test suite
 ├── docs/                    # Documentation
 ├── examples/                # Example scripts
+├── CHANGELOG.md             # Release notes
+├── MANIFEST.in              # Source distribution manifest
 └── pyproject.toml           # Package configuration
 ```
 
@@ -362,8 +398,8 @@ We welcome contributions! Please follow these guidelines:
 
 For issues, questions, or feature requests:
 
-- **API Reference**: [docs/api-reference.md](docs/api-reference.md)
-- **Examples**: [docs/examples.md](docs/examples.md)
+- **API Reference**: [docs/api-reference.md](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/api-reference.md)
+- **Examples**: [docs/examples.md](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)
 - **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-sdk/issues)
 
 ## License

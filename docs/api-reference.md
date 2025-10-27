@@ -1043,7 +1043,7 @@ except Exception as e:
 - **[User Guide](README.md)**: Complete SDK documentation and usage guide
 - **[Usage Examples](examples.md)**: 9 comprehensive examples covering common workflows
 - **[PyPI Package](https://pypi.org/project/carver-feeds-sdk/)**: Package information and version history
-- **[GitHub Repository](https://github.com/carveragents/carver-feeds-skill)**: Source code and issue tracking
+- **[GitHub Repository](https://github.com/carveragents/carver-feeds-sdk)**: Source code and issue tracking
 
 ---
 

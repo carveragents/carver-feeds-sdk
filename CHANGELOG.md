@@ -42,4 +42,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quick start guide
 - Troubleshooting tips
 
-[0.1.0]: https://github.com/carveragents/carver-feeds-skill/releases/tag/v0.1.0
+[0.1.0]: https://github.com/carveragents/carver-feeds-sdk/releases/tag/v0.1.0
