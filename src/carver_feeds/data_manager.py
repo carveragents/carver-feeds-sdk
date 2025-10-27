@@ -287,6 +287,10 @@ class FeedsDataManager:
             # Map published_date to published_at for consistency
             if 'published_date' in df.columns:
                 df['published_at'] = df['published_date']
+            else:
+                # If no published_date, create empty published_at column for consistency
+                logger.warning("No published_date field in API response, creating empty published_at")
+                df['published_at'] = pd.NaT
 
             # Convert date columns to datetime
             date_columns = ['published_at', 'created_at']
@@ -453,6 +457,10 @@ class FeedsDataManager:
                         # Map published_date to published_at for consistency
                         if 'published_date' in entries_df.columns:
                             entries_df['published_at'] = entries_df['published_date']
+                        else:
+                            # If no published_date, create empty published_at column for consistency
+                            logger.warning("No published_date field in API response, creating empty published_at")
+                            entries_df['published_at'] = pd.NaT
 
                         # Convert date columns
                         date_columns = ['published_at', 'created_at']
@@ -464,16 +472,24 @@ class FeedsDataManager:
                         if 'is_active' in entries_df.columns:
                             entries_df['is_active'] = entries_df['is_active'].fillna(True).astype(bool)
 
-                        # Rename entry columns
-                        entries_df = entries_df.rename(columns={
-                            'id': 'entry_id',
-                            'title': 'entry_title',
-                            'link': 'entry_link',
-                            'content_markdown': 'entry_content_markdown',
-                            'published_at': 'entry_published_at',
-                            'created_at': 'entry_created_at',
-                            'is_active': 'entry_is_active'
-                        })
+                        # Rename entry columns (only rename if column exists)
+                        rename_map = {}
+                        if 'id' in entries_df.columns:
+                            rename_map['id'] = 'entry_id'
+                        if 'title' in entries_df.columns:
+                            rename_map['title'] = 'entry_title'
+                        if 'link' in entries_df.columns:
+                            rename_map['link'] = 'entry_link'
+                        if 'content_markdown' in entries_df.columns:
+                            rename_map['content_markdown'] = 'entry_content_markdown'
+                        if 'published_at' in entries_df.columns:
+                            rename_map['published_at'] = 'entry_published_at'
+                        if 'created_at' in entries_df.columns:
+                            rename_map['created_at'] = 'entry_created_at'
+                        if 'is_active' in entries_df.columns:
+                            rename_map['is_active'] = 'entry_is_active'
+
+                        entries_df = entries_df.rename(columns=rename_map)
 
                         # The entries already have all the feed and topic info, so just return them
                         hierarchy = entries_df
