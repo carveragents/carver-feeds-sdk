@@ -277,16 +277,16 @@ class FeedsDataManager:
                 )
 
             # Convert to DataFrame
+            # Note: API returns 'published_date', we'll map it to 'published_at' after
             expected_columns = [
                 'id', 'title', 'link', 'content_markdown',
-                'feed_id', 'published_at', 'created_at', 'is_active'
+                'feed_id', 'published_date', 'created_at', 'is_active'
             ]
             df = self._json_to_dataframe(entries_data, expected_columns)
 
-            # Map published_date to published_at if it exists
+            # Map published_date to published_at for consistency
             if 'published_date' in df.columns:
-                if 'published_at' not in df.columns or df['published_at'].isna().all():
-                    df['published_at'] = df['published_date']
+                df['published_at'] = df['published_date']
 
             # Convert date columns to datetime
             date_columns = ['published_at', 'created_at']
@@ -441,18 +441,18 @@ class FeedsDataManager:
                         hierarchy = pd.DataFrame()
                     else:
                         # Convert to DataFrame
+                        # Note: API returns 'published_date', we'll map it to 'published_at' after
                         expected_columns = [
                             'id', 'title', 'link', 'content_markdown',
-                            'published_at', 'created_at', 'is_active',
+                            'published_date', 'created_at', 'is_active',
                             'feed_id', 'feed_name', 'feed_url', 'feed_is_active',
                             'topic_id', 'topic_name', 'topic_is_active'
                         ]
                         entries_df = self._json_to_dataframe(all_entries, expected_columns)
 
-                        # Map published_date to published_at if needed
+                        # Map published_date to published_at for consistency
                         if 'published_date' in entries_df.columns:
-                            if 'published_at' not in entries_df.columns or entries_df['published_at'].isna().all():
-                                entries_df['published_at'] = entries_df['published_date']
+                            entries_df['published_at'] = entries_df['published_date']
 
                         # Convert date columns
                         date_columns = ['published_at', 'created_at']
