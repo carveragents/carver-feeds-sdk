@@ -149,7 +149,7 @@ High-level query interface with fluent API:
 The SDK works with three main entities in a hierarchical structure:
 
 ```
-Topic (regulatory topics like Banking, Healthcare, Energy)
+Topic (regulatory bodies like SEC, SEBI, RBI, etc.)
   ↓ 1:N
 Feed (RSS feeds for each topic)
   ↓ 1:N
