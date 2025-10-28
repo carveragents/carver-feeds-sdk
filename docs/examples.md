@@ -976,5 +976,5 @@ entries.to_csv(f'{topic_name.lower()}_deep_dive.csv', index=False)
 
 **Document Version**: 2.0
 **Last Updated**: 2025-10-26
-**SDK Version**: 0.1.1+
+**SDK Version**: 0.1.2+
 **Status**: Production Ready
