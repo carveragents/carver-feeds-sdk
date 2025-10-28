@@ -50,7 +50,11 @@ CARVER_BASE_URL=https://app.carveragents.ai  # optional
 ### 2. Basic Usage
 
 ```python
+
+from dotenv import load_dotenv
 from carver_feeds import get_client
+
+load_dotenv()
 
 # Initialize client from environment variables
 client = get_client()
@@ -67,7 +71,10 @@ print(f"Found {len(feeds)} feeds")
 ### 3. Using DataFrames
 
 ```python
+from dotenv import load_dotenv
 from carver_feeds import create_data_manager
+
+load_dotenv()
 
 # Create data manager
 dm = create_data_manager()
@@ -84,8 +91,11 @@ print(f"Found {len(entries_df)} entries")
 ### 4. Advanced Querying
 
 ```python
+from dotenv import load_dotenv
 from carver_feeds import create_query_engine
 from datetime import datetime
+
+load_dotenv()
 
 # Create query engine
 qe = create_query_engine()
