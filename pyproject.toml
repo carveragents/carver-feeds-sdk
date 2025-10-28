@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "carver-feeds-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python SDK for the Carver Feeds API - fetch, analyze, and query regulatory feed data"
 readme = "README.md"
 authors = [
