@@ -122,7 +122,7 @@ Converts API responses to pandas DataFrames:
 - JSON to DataFrame conversion with schema validation
 - Hierarchical data views (topic → feed → entry)
 - Smart endpoint selection for performance
-- Handles ~114 topics, ~827 feeds, ~10,000 entries
+- Handles topics, feeds, entries
 
 ### Query Engine (`EntryQueryEngine`)
 
