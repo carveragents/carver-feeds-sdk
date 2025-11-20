@@ -61,6 +61,40 @@ def main():
             print("\nFirst 3 entries:")
             print(entries_df[['id', 'title', 'published_at']].head(3))
 
+    print("\n" + "="*60 + "\n")
+
+    # Example 3: NEW in v0.2.0 - Fetching content from S3
+    print("=== Example 3: Fetch Content from S3 (v0.2.0+) ===")
+    print("Note: Requires AWS_PROFILE_NAME configured in .env")
+
+    if len(feeds_df) > 0:
+        first_feed_id = feeds_df['id'].iloc[0]
+
+        # Fetch entries WITH content from S3
+        entries_with_content = dm.get_entries_df(
+            feed_id=first_feed_id,
+            fetch_content=True  # NEW: Fetch content from S3
+        )
+
+        print(f"\nEntries with S3 content:")
+        print(f"  Total entries: {len(entries_with_content)}")
+
+        if len(entries_with_content) > 0:
+            # Check how many have content
+            has_content = entries_with_content['content_markdown'].notna().sum()
+            print(f"  Entries with content: {has_content}/{len(entries_with_content)}")
+
+            # Show first entry with content
+            for idx, row in entries_with_content.iterrows():
+                if row.get('content_markdown'):
+                    print(f"\nFirst entry with content:")
+                    print(f"  Title: {row['title']}")
+                    print(f"  Content length: {len(row['content_markdown'])} characters")
+                    print(f"  Content preview: {row['content_markdown'][:150]}...")
+                    break
+        else:
+            print("\n  Tip: Set AWS_PROFILE_NAME in .env to fetch content from S3")
+
 
 if __name__ == "__main__":
     main()

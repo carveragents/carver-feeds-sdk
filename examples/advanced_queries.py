@@ -92,6 +92,40 @@ def main():
     results_dict = qe5.to_dict()
     print(f"Got {len(results_dict)} results as dictionary")
 
+    print("\n" + "="*60 + "\n")
+
+    # Example 6: NEW in v0.2.0 - Lazy Loading with S3 Content
+    print("=== Example 6: Lazy Loading with S3 Content (v0.2.0+) ===")
+    print("Note: Requires AWS_PROFILE_NAME configured in .env")
+
+    qe6 = qe.chain()
+
+    # Filter first, THEN fetch content (more efficient)
+    results = qe6 \
+        .filter_by_topic(topic_name="Banking") \
+        .filter_by_date(start_date=datetime(2024, 10, 1)) \
+        .fetch_content() \
+        .to_dataframe()
+
+    print(f"Found {len(results)} Banking entries from Oct 2024+")
+
+    if len(results) > 0:
+        has_content = results['content_markdown'].notna().sum()
+        print(f"Entries with S3 content: {has_content}/{len(results)}")
+
+        # Show first entry with content
+        for idx, row in results.iterrows():
+            if row.get('content_markdown'):
+                print(f"\nSample entry with content:")
+                print(f"  Title: {row['entry_title']}")
+                print(f"  Topic: {row['topic_name']}")
+                print(f"  Content length: {len(row['content_markdown'])} characters")
+                print(f"  Content preview: {row['content_markdown'][:100]}...")
+                break
+    else:
+        print("\nTip: Configure AWS_PROFILE_NAME in .env to fetch content from S3")
+        print("Without S3 config, content_markdown will be None")
+
 
 if __name__ == "__main__":
     main()

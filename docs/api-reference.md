@@ -23,8 +23,10 @@ Complete technical reference for the Carver Feeds SDK, including API endpoints, 
 - **Base URL**: `https://app.carveragents.ai`
 - **Authentication**: API key via `X-API-Key` header
 - **Response Format**: JSON
-- **Pagination**: Limit/offset based
+- **Pagination**: Limit/offset based (maximum page size: 100 entries)
 - **Rate Limits**: 10 requests/second (standard), 5 requests/second (admin)
+
+**Important:** The API server enforces a maximum page size of 100 entries per request. Requesting `limit > 100` will return at most 100 entries. Use `fetch_all=True` in SDK methods for automatic pagination beyond this limit.
 
 ### Authentication
 
@@ -144,11 +146,19 @@ topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
       "id": "entry-789",
       "title": "New Banking Regulation Proposed",
       "link": "https://example.com/article/123",
-      "content_markdown": "# Regulation Details\n\nFull article content in markdown...",
       "description": "Brief summary of the article",
       "published_date": "2024-10-24T08:00:00Z",
       "created_at": "2024-10-24T09:15:00Z",
-      "is_active": true
+      "is_active": true,
+      "extracted_metadata": {
+        "feed_id": "feed-456",
+        "topic_id": "topic-123",
+        "content_status": "extracted",
+        "timestamp": "2024-11-18T17:35:34.258Z",
+        "s3_content_md_path": "s3://bucket/path/content.md",
+        "s3_content_html_path": "s3://bucket/path/content.html",
+        "s3_aggregated_content_md_path": "s3://bucket/path/aggregated.md"
+      }
     }
   ],
   "total": 10247,
@@ -156,6 +166,8 @@ topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
   "offset": 0
 }
 ```
+
+**Note (v0.2.0+):** `content_markdown` is no longer returned by this endpoint. Content is now stored in S3 and must be fetched separately using the S3 paths provided in `extracted_metadata`. Use `get_entries_df(fetch_content=True)` to automatically fetch content from S3.
 
 **SDK Usage**:
 ```python
@@ -180,7 +192,7 @@ active_entries = client.list_entries(is_active=True, fetch_all=True)
 **Description**: Fetch all entries for a specific feed. This endpoint includes feed context.
 
 **Parameters**:
-- `limit` (optional): Maximum number of entries to return (default: 100)
+- `limit` (optional): Maximum number of entries to return (default: 100, max: 100)
 
 **Response**:
 ```json
@@ -190,11 +202,19 @@ active_entries = client.list_entries(is_active=True, fetch_all=True)
       "id": "entry-789",
       "title": "SEC Proposes New Rule",
       "link": "https://www.sec.gov/news/article-123",
-      "content_markdown": "# Article Content\n\nDetailed content...",
       "description": "Brief summary",
       "published_date": "2024-10-24T08:00:00Z",
       "created_at": "2024-10-24T09:15:00Z",
-      "is_active": true
+      "is_active": true,
+      "extracted_metadata": {
+        "feed_id": "feed-456",
+        "topic_id": "topic-123",
+        "content_status": "extracted",
+        "timestamp": "2024-11-18T17:35:34.258Z",
+        "s3_content_md_path": "s3://bucket/path/content.md",
+        "s3_content_html_path": "s3://bucket/path/content.html",
+        "s3_aggregated_content_md_path": "s3://bucket/path/aggregated.md"
+      }
     }
   ]
 }
@@ -205,7 +225,7 @@ active_entries = client.list_entries(is_active=True, fetch_all=True)
 feed_entries = client.get_feed_entries("feed-456", limit=100)
 ```
 
-**Note**: The data manager automatically injects `feed_id` into each entry when using this endpoint, enabling proper relationship tracking.
+**Note**: The data manager automatically injects `feed_id` into each entry when using this endpoint, enabling proper relationship tracking. **API Limit:** Requesting `limit > 100` returns at most 100 entries. **Content (v0.2.0+):** `content_markdown` not included by default; use SDK with `fetch_content=True` to fetch from S3.
 
 ---
 
@@ -216,14 +236,14 @@ feed_entries = client.get_feed_entries("feed-456", limit=100)
 **Description**: Fetch all entries for feeds within a specific topic. Optimized endpoint for topic-level queries.
 
 **Parameters**:
-- `limit` (optional): Maximum number of entries to return
+- `limit` (optional): Maximum number of entries to return (max: 100)
 
-**Response**: Same format as feed entries endpoint
+**Response**: Same format as feed entries endpoint (includes `extracted_metadata`)
 
 **SDK Usage**:
 ```python
 # Via API client
-topic_entries = client.get_topic_entries("topic-123", limit=500)
+topic_entries = client.get_topic_entries("topic-123", limit=100)
 
 # Via query engine (recommended)
 from carver_feeds import create_query_engine
@@ -233,7 +253,7 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 
 **Performance**: Faster than fetching all entries and filtering, especially for large datasets.
 
-**Note**: Entries from this endpoint do NOT include `feed_id` (API limitation).
+**Note**: Entries from this endpoint do NOT include `feed_id` (API limitation). **API Limit:** Requesting `limit > 100` returns at most 100 entries. **Content (v0.2.0+):** `content_markdown` not included; requires S3 fetch.
 
 ---
 
@@ -287,23 +307,28 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 | `id` | str | Unique entry identifier |
 | `title` | str | Entry headline |
 | `link` | str | URL to original article |
-| `content_markdown` | str | Full article content in markdown |
+| `content_markdown` | str | Full article content in markdown (requires `fetch_content=True` in v0.2.0+) |
 | `description` | str | Brief summary |
 | `published_at` | datetime64 | Publication date (mapped from `published_date`) |
 | `created_at` | datetime64 | Creation timestamp in Carver system |
 | `is_active` | bool | Active status |
-| `feed_id` | str | Associated feed ID (only when fetched via feed endpoint) |
+| `feed_id` | str | Associated feed ID (from extracted_metadata) |
+| `topic_id` | str | Associated topic ID (from extracted_metadata) |
+| `content_status` | str | Content extraction status (from extracted_metadata) |
+| `content_timestamp` | datetime64 | When content was fetched (from extracted_metadata) |
+| `s3_content_md_path` | str | S3 path to markdown content (from extracted_metadata) |
+| `s3_content_html_path` | str | S3 path to HTML content (from extracted_metadata) |
+| `s3_aggregated_content_md_path` | str | S3 path to aggregated content (from extracted_metadata) |
+
+**Important Changes in v0.2.0:**
+- `content_markdown` is **NOT** returned by the API by default
+- To fetch content, use `get_entries_df(fetch_content=True)` with AWS credentials configured
+- New metadata fields from `extracted_metadata` provide S3 paths and content status
+- `feed_id` and `topic_id` now available from `extracted_metadata` for all entries
 
 **Relationships**:
-- `feed_id` → `feeds.id` (many-to-one, when available)
-
-**Important**: `feed_id` is only present when entries are fetched via:
-- `get_feed_entries(feed_id)`
-- `get_hierarchical_view(feed_id=...)`
-
-It is NOT present when fetched via:
-- `list_entries()` (general entry list)
-- `get_topic_entries(topic_id)` (topic-specific entries)
+- `feed_id` → `feeds.id` (many-to-one)
+- `topic_id` → `topics.id` (many-to-one)
 
 ---
 
@@ -485,7 +510,7 @@ topic_feeds = dm.get_feeds_df(topic_id="topic-123")
 
 ---
 
-##### `get_entries_df(feed_id: Optional[str] = None, topic_id: Optional[str] = None, is_active: Optional[bool] = None, fetch_all: bool = True) -> pd.DataFrame`
+##### `get_entries_df(feed_id: Optional[str] = None, topic_id: Optional[str] = None, is_active: Optional[bool] = None, fetch_all: bool = True, fetch_content: bool = False, s3_client: Optional[S3ContentClient] = None) -> pd.DataFrame`
 Fetch entries as a pandas DataFrame with flexible filtering.
 
 **Parameters**:
@@ -493,20 +518,32 @@ Fetch entries as a pandas DataFrame with flexible filtering.
 - `topic_id`: Filter by topic ID (optional, uses optimized endpoint)
 - `is_active`: Filter by active status (optional)
 - `fetch_all`: Fetch all pages vs first page only (default: True)
+- `fetch_content`: Fetch content from S3 (default: False, requires AWS credentials)
+- `s3_client`: S3 client instance (optional, auto-created if not provided)
 
 **Returns**: DataFrame with entry schema
 
 **Performance**:
 - With `feed_id` or `topic_id`: Fast, fetches only relevant entries
 - Without filters + `fetch_all=True`: Slow (~30-60s), fetches all ~10,000 entries
+- With `fetch_content=True`: Additional time for S3 fetches (~1-2s per 100 entries)
+
+**S3 Content Fetching (v0.2.0+)**:
+Content is no longer returned by the API. To fetch content from S3:
+1. Configure AWS credentials (AWS profile or direct credentials)
+2. Use `fetch_content=True` to automatically fetch from S3
+3. Content will be populated in `content_markdown` column
 
 **Example**:
 ```python
-# All entries (slow)
+# All entries without content (slow)
 all_entries = dm.get_entries_df()
 
 # Entries for specific feed (fast)
 feed_entries = dm.get_entries_df(feed_id="feed-456")
+
+# Entries with content from S3 (requires AWS credentials)
+entries_with_content = dm.get_entries_df(feed_id="feed-456", fetch_content=True)
 
 # Entries for topic (medium speed)
 topic_entries = dm.get_entries_df(topic_id="topic-123")
@@ -561,6 +598,99 @@ from carver_feeds import create_data_manager
 
 dm = create_data_manager()  # Uses .env for API key
 topics = dm.get_topics_df()
+```
+
+---
+
+### carver_feeds.s3_client
+
+#### `S3ContentClient`
+
+**Description**: Client for fetching entry content from AWS S3 storage (v0.2.0+).
+
+**Initialization**:
+```python
+from carver_feeds import S3ContentClient
+
+# Method 1: Using AWS Profile (recommended for local development)
+s3_client = S3ContentClient(
+    aws_profile_name="your-aws-profile",
+    aws_region="us-east-1"
+)
+
+# Method 2: Using Direct Credentials (for CI/CD)
+s3_client = S3ContentClient(
+    aws_access_key_id="your_access_key",
+    aws_secret_access_key="your_secret_key",
+    aws_region="us-east-1"
+)
+```
+
+**Authentication Priority**:
+1. AWS Profile (`aws_profile_name`) takes precedence if provided
+2. Falls back to direct credentials (`aws_access_key_id` + `aws_secret_access_key`)
+3. Falls back to boto3 default credential chain
+
+**Methods**:
+
+##### `fetch_content(s3_path: str) -> Optional[str]`
+Fetch content from S3 given an S3 path.
+
+**Parameters**:
+- `s3_path`: Full S3 path (e.g., "s3://bucket/path/content.md")
+
+**Returns**: Content as string, or None if fetch fails
+
+**Example**:
+```python
+s3_client = S3ContentClient(aws_profile_name="my-profile")
+content = s3_client.fetch_content("s3://bucket/path/content.md")
+```
+
+##### `fetch_content_batch(s3_paths: List[str]) -> Dict[str, Optional[str]]`
+Fetch multiple content files from S3 in batch.
+
+**Parameters**:
+- `s3_paths`: List of S3 paths
+
+**Returns**: Dictionary mapping S3 path to content (or None if failed)
+
+**Example**:
+```python
+paths = ["s3://bucket/path1.md", "s3://bucket/path2.md"]
+contents = s3_client.fetch_content_batch(paths)
+for path, content in contents.items():
+    print(f"{path}: {len(content) if content else 0} chars")
+```
+
+---
+
+#### `get_s3_client() -> S3ContentClient`
+Factory function to create S3 client from environment variables.
+
+**Environment Variables**:
+- `AWS_PROFILE_NAME`: AWS profile name (Method 1)
+- `AWS_ACCESS_KEY_ID`: Access key (Method 2)
+- `AWS_SECRET_ACCESS_KEY`: Secret key (Method 2)
+- `AWS_REGION`: AWS region (optional, defaults to us-east-1)
+
+**Returns**: Configured `S3ContentClient` instance, or None if no credentials available
+
+**Graceful Degradation**: Returns None if no AWS credentials configured. SDK continues to work without S3 content fetching.
+
+**Example**:
+```python
+from carver_feeds import get_s3_client, create_data_manager
+
+# Auto-load from environment
+s3_client = get_s3_client()
+
+if s3_client:
+    # Fetch content with S3 client
+    dm = create_data_manager()
+    entries = dm.get_entries_df(feed_id="feed-456", fetch_content=True, s3_client=s3_client)
+else:
+    print("AWS credentials not configured. Content fetching disabled.")
 ```
 
 ---
@@ -806,6 +936,14 @@ print(topics_df[['id', 'name', 'is_active']].head(10))
 topic_id = topics_df['id'].iloc[0]
 feeds_df = dm.get_feeds_df(topic_id=topic_id)
 print(f"Feeds in topic: {len(feeds_df)}")
+
+# Get entries without content (fast, works without AWS)
+entries_df = dm.get_entries_df(topic_id=topic_id)
+print(f"Entries: {len(entries_df)}")
+
+# Get entries with content from S3 (requires AWS credentials)
+entries_with_content = dm.get_entries_df(topic_id=topic_id, fetch_content=True)
+print(f"Entries with content: {len(entries_with_content)}")
 ```
 
 ### Pattern 2: Keyword Search with Filters
@@ -898,10 +1036,43 @@ entries = dm.get_entries_df(topic_id="topic-123")  # Fast, optimized endpoint
 
 # Then do analysis on filtered data
 print(f"Loaded {len(entries)} entries for topic")
-keyword_matches = entries[
-    entries['content_markdown'].str.contains("regulation", case=False, na=False)
+
+# Note: In v0.2.0+, content_markdown requires S3 fetch
+# Use fetch_content=True to enable content search
+entries_with_content = dm.get_entries_df(topic_id="topic-123", fetch_content=True)
+keyword_matches = entries_with_content[
+    entries_with_content['content_markdown'].str.contains("regulation", case=False, na=False)
 ]
 print(f"Found {len(keyword_matches)} matching entries")
+```
+
+### Pattern 7: Lazy vs Eager Content Loading (v0.2.0+)
+
+```python
+from carver_feeds import create_data_manager, get_s3_client
+
+dm = create_data_manager()
+s3_client = get_s3_client()
+
+# Lazy loading: Fetch metadata first, content only when needed
+entries = dm.get_entries_df(feed_id="feed-456")  # Fast, no S3 fetch
+print(f"Found {len(entries)} entries")
+
+# Filter based on metadata (title, description, dates)
+recent_entries = entries[entries['published_at'] > '2024-01-01']
+print(f"Filtered to {len(recent_entries)} recent entries")
+
+# Eager loading: Fetch content for filtered subset only
+if s3_client and len(recent_entries) > 0:
+    for idx, row in recent_entries.iterrows():
+        s3_path = row['s3_content_md_path']
+        if s3_path:
+            content = s3_client.fetch_content(s3_path)
+            recent_entries.at[idx, 'content_markdown'] = content
+    print(f"Fetched content for {len(recent_entries)} entries")
+
+# Alternative: Fetch all content upfront (easier but slower)
+all_with_content = dm.get_entries_df(feed_id="feed-456", fetch_content=True)
 ```
 
 ---
@@ -981,9 +1152,15 @@ except Exception as e:
 |-----------|--------|------|
 | List topics | ~114 | < 1 second |
 | List feeds | ~827 | ~3-5 seconds |
-| List all entries | ~10,000 | ~30-60 seconds |
-| Entries for specific feed | Varies | ~2-10 seconds |
-| Entries for specific topic | Varies | ~5-20 seconds |
+| List all entries (no content) | ~10,000 | ~30-60 seconds |
+| List all entries (with S3 content) | ~10,000 | ~60-120 seconds |
+| Entries for specific feed (no content) | Varies | ~2-10 seconds |
+| Entries for specific feed (with S3 content) | Varies | ~3-15 seconds |
+| Entries for specific topic (no content) | Varies | ~5-20 seconds |
+| Entries for specific topic (with S3 content) | Varies | ~10-40 seconds |
+| S3 content fetch (per 100 entries) | 100 | ~1-2 seconds |
+
+**Note (v0.2.0+):** Content fetching from S3 adds overhead. For large datasets, consider lazy loading: fetch metadata first, then fetch content only for filtered results.
 
 ### Optimization Strategies
 
@@ -1031,10 +1208,14 @@ except Exception as e:
 |------|------|--------|
 | Topics | ~114 | < 1 MB |
 | Feeds | ~827 | ~5 MB |
-| Entries (all) | ~10,000 | ~50-100 MB |
-| Hierarchical (with entries) | ~10,000 | ~100-200 MB |
+| Entries (no content) | ~10,000 | ~20-50 MB |
+| Entries (with S3 content) | ~10,000 | ~100-200 MB |
+| Hierarchical (with entries, no content) | ~10,000 | ~50-100 MB |
+| Hierarchical (with entries + content) | ~10,000 | ~200-400 MB |
 
 **Recommendation**: For large result sets, export to CSV and process externally rather than loading full DataFrame into memory.
+
+**v0.2.0+ Optimization**: Content is the largest component of memory usage. Fetch content only when needed using `fetch_content=True` selectively, or use lazy loading patterns to fetch content for filtered subsets.
 
 ---
 

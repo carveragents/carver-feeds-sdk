@@ -43,9 +43,25 @@ pip install carver-feeds-sdk
 Create a `.env` file in your project directory:
 
 ```bash
+# Required: Carver API Key
 CARVER_API_KEY=your_api_key_here
 CARVER_BASE_URL=https://app.carveragents.ai  # optional
+
+# Optional: AWS Configuration for S3 Content Fetching (v0.2.0+)
+# Content is stored in S3 and requires AWS credentials to fetch.
+# Choose one authentication method:
+
+# Method 1: AWS Profile (recommended for local development)
+AWS_PROFILE_NAME=your-aws-profile
+
+# Method 2: Direct Credentials (for CI/CD environments)
+# AWS_ACCESS_KEY_ID=your_access_key
+# AWS_SECRET_ACCESS_KEY=your_secret_key
+
+AWS_REGION=us-east-1  # optional, defaults to us-east-1
 ```
+
+**Note:** As of v0.2.0, entry content is no longer returned directly by the API. Content is now stored in S3 and must be fetched separately. To access content, configure AWS credentials using one of the methods above. The SDK works without AWS credentials, but `content_markdown` will be `None` for all entries.
 
 ### 2. Basic Usage
 
@@ -83,9 +99,13 @@ dm = create_data_manager()
 topics_df = dm.get_topics_df()
 print(topics_df[['id', 'name', 'is_active']].head())
 
-# Get entries for a specific feed
+# Get entries for a specific feed (without content)
 entries_df = dm.get_entries_df(feed_id="feed-123")
 print(f"Found {len(entries_df)} entries")
+
+# Get entries with content from S3 (requires AWS credentials)
+entries_with_content = dm.get_entries_df(feed_id="feed-123", fetch_content=True)
+print(f"Fetched content for {len(entries_with_content)} entries")
 ```
 
 ### 4. Advanced Querying
@@ -133,6 +153,7 @@ Converts API responses to pandas DataFrames:
 - Hierarchical data views (topic → feed → entry)
 - Smart endpoint selection for performance
 - Handles topics, feeds, entries
+- S3 content fetching capability (v0.2.0+: content not returned by API by default)
 
 ### Query Engine (`EntryQueryEngine`)
 
@@ -159,7 +180,7 @@ Entry (individual articles/entries)
 **Key Fields**:
 - **Topic**: `id`, `name`, `description`, `is_active`, timestamps
 - **Feed**: `id`, `name`, `url`, `topic_id`, `topic_name`, `is_active`, timestamps
-- **Entry**: `id`, `title`, `link`, `content_markdown`, `description`, `published_at`, `feed_id`, `is_active`, timestamps
+- **Entry**: `id`, `title`, `link`, `content_markdown` (requires S3 fetch in v0.2.0+), `description`, `published_at`, `feed_id`, `topic_id`, `content_status`, `s3_content_md_path`, `s3_content_html_path`, `is_active`, timestamps
 
 ## ⚡ Advanced Features
 
@@ -183,7 +204,7 @@ qe.search_entries("fintech", search_fields=['entry_title', 'entry_description'])
 ```
 
 **Available Search Fields**:
-- `entry_content_markdown` (default, full article content)
+- `entry_content_markdown` (default, full article content - requires `fetch_content=True` in v0.2.0+)
 - `entry_title` (headline)
 - `entry_description` (brief summary)
 - `entry_link` (URL)
@@ -217,6 +238,7 @@ topic_data = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123"
 - Python 3.10 or higher
 - pandas >= 2.0.0
 - requests >= 2.31.0
+- boto3 >= 1.26.0 (optional, required for S3 content fetching in v0.2.0+)
 - See [pyproject.toml](pyproject.toml) for complete dependency list
 
 ## 🔧 Development

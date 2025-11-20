@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-11-19
+
+### Added
+- **S3 Content Fetching**: Entry content is now fetched from AWS S3
+  - New `S3ContentClient` class for AWS S3 integration with profile-based authentication
+  - Support for `fetch_content` parameter in `get_entries_df()` and `get_hierarchical_view()`
+  - New `fetch_content()` method in `EntryQueryEngine` for lazy loading content
+  - Batch fetching with parallel requests (10 concurrent workers) for performance
+  - Graceful error handling with retry logic and exponential backoff
+
+- **New Metadata Fields**: All entries now include `extracted_metadata` fields
+  - `feed_id`: Feed ID extracted from metadata (improves hierarchical mapping)
+  - `topic_id`: Topic ID extracted from metadata
+  - `content_status`: Content extraction status (e.g., "done", "pending")
+  - `content_timestamp`: When content was last fetched/updated
+  - `s3_content_md_path`: S3 path to markdown content
+  - `s3_content_html_path`: S3 path to HTML content
+  - `s3_aggregated_content_md_path`: S3 path to aggregated content
+
+- **Factory Functions**: Updated to support S3 content fetching
+  - `create_query_engine(fetch_content=False, s3_client=None)`: Opt-in content fetching
+  - `get_s3_client(load_from_env=True)`: Create S3 client from environment config
+
+### Changed
+- **BREAKING (API Change)**: Content is no longer returned directly by the Carver API
+  - `content_markdown` field must be fetched from S3 using `fetch_content=True`
+  - Without `fetch_content=True`, `content_markdown` will be `None`
+  - This is backward compatible for code that doesn't use content
+
+- **AWS Configuration Required**: For content fetching, configure AWS credentials using one of two methods:
+  - **Method 1 (Recommended)**: AWS Profile - uses `~/.aws/credentials` profile
+  - **Method 2**: Direct Credentials - uses access key ID and secret key
+  - Profile takes precedence if both are configured
+  - See updated `.env.example` for detailed setup instructions
+
+- **Dependencies**: Added `boto3>=1.34.0,<2.0.0` as required dependency
+
+### Migration Guide
+For users who need entry content, configure AWS credentials using one of these methods:
+
+#### Method 1: AWS Profile (Recommended for Local Development)
+
+1. Configure AWS profile in `~/.aws/credentials`:
+   ```ini
+   [carver-prod]
+   aws_access_key_id = YOUR_ACCESS_KEY
+   aws_secret_access_key = YOUR_SECRET_KEY
+   ```
+
+2. Add profile name to `.env`:
+   ```bash
+   AWS_PROFILE_NAME=carver-prod
+   AWS_REGION=us-east-1  # optional
+   ```
+
+#### Method 2: Direct Credentials (Recommended for CI/CD)
+
+Add credentials directly to `.env`:
+```bash
+AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
+AWS_REGION=us-east-1  # optional
+```
+
+**Note:** If both methods are configured, the AWS profile takes priority.
+
+#### Using Content Fetching in Code
+
+Update your code to fetch content:
+
+```python
+# Before (v0.1.x)
+entries = dm.get_entries_df()
+
+# After (v0.2.0)
+entries = dm.get_entries_df(fetch_content=True)
+```
+
+For better performance, use lazy loading:
+   ```python
+   qe = create_query_engine()
+   results = qe.filter_by_topic(topic_name="Banking") \
+       .fetch_content() \
+       .to_dataframe()
+   ```
+
 ## [0.1.2] - 2025-10-28
 
 ### Fixed
