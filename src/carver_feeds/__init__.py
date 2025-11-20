@@ -35,11 +35,11 @@ from carver_feeds.__version__ import __version__, __version_info__
 
 # Import API client and factory
 from carver_feeds.carver_api import (
-    CarverFeedsAPIClient,
-    get_client,
-    CarverAPIError,
     AuthenticationError,
+    CarverAPIError,
+    CarverFeedsAPIClient,
     RateLimitError,
+    get_client,
 )
 
 # Import data manager and factory
@@ -52,6 +52,15 @@ from carver_feeds.data_manager import (
 from carver_feeds.query_engine import (
     EntryQueryEngine,
     create_query_engine,
+)
+
+# Import S3 client and factory
+from carver_feeds.s3_client import (
+    S3ContentClient,
+    S3CredentialsError,
+    S3Error,
+    S3FetchError,
+    get_s3_client,
 )
 
 # Define public API
@@ -68,8 +77,14 @@ __all__ = [
     # Query engine
     "EntryQueryEngine",
     "create_query_engine",
+    # S3 client
+    "S3ContentClient",
+    "get_s3_client",
     # Exceptions
     "CarverAPIError",
     "AuthenticationError",
     "RateLimitError",
+    "S3Error",
+    "S3CredentialsError",
+    "S3FetchError",
 ]

@@ -21,14 +21,14 @@ Example:
     >>> feeds = client.list_feeds()
 """
 
-from typing import Dict, List, Optional, Any
-import os
-import time
-import random
 import logging
+import os
+import random
+import time
+from typing import Any
+
 import requests
 from dotenv import load_dotenv
-
 
 # Configure module logger (library should not configure logging)
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # API Configuration Constants
 DEFAULT_BASE_URL = "https://app.carveragents.ai"
-DEFAULT_PAGE_LIMIT = 1000
+DEFAULT_PAGE_LIMIT = 100  # API server enforces max 100 entries per page
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT_SECONDS = 30
 RETRY_BACKOFF_FACTOR = 2
@@ -44,16 +44,19 @@ RETRY_BACKOFF_FACTOR = 2
 
 class CarverAPIError(Exception):
     """Base exception for Carver API errors."""
+
     pass
 
 
 class AuthenticationError(CarverAPIError):
     """Raised when authentication fails."""
+
     pass
 
 
 class RateLimitError(CarverAPIError):
     """Raised when rate limit is exceeded."""
+
     pass
 
 
@@ -79,7 +82,7 @@ class CarverFeedsAPIClient:
         base_url: str,
         api_key: str,
         max_retries: int = DEFAULT_MAX_RETRIES,
-        initial_retry_delay: float = 1.0
+        initial_retry_delay: float = 1.0,
     ):
         """Initialize client with base URL and API key."""
         if not base_url:
@@ -90,24 +93,26 @@ class CarverFeedsAPIClient:
                 "or provide api_key parameter. See .env.example for configuration."
             )
 
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.max_retries = max_retries
         self.initial_retry_delay = initial_retry_delay
         self.session = requests.Session()
-        self.session.headers.update({
-            'X-API-Key': self.api_key,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        })
+        self.session.headers.update(
+            {
+                "X-API-Key": self.api_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        )
 
     def _make_request(
         self,
         method: str,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        retry_count: int = 0
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        retry_count: int = 0,
+    ) -> dict[str, Any]:
         """
         Make HTTP request with retry logic and error handling.
 
@@ -129,10 +134,7 @@ class CarverFeedsAPIClient:
 
         try:
             response = self.session.request(
-                method=method,
-                url=url,
-                params=params,
-                timeout=DEFAULT_TIMEOUT_SECONDS
+                method=method, url=url, params=params, timeout=DEFAULT_TIMEOUT_SECONDS
             )
 
             # Handle different status codes
@@ -192,14 +194,11 @@ class CarverFeedsAPIClient:
 
         except requests.exceptions.Timeout as e:
             raise CarverAPIError(
-                f"Request timeout: The server took too long to respond. "
-                "Please try again later."
+                "Request timeout: The server took too long to respond. " "Please try again later."
             ) from e
 
         except requests.exceptions.RequestException as e:
-            raise CarverAPIError(
-                f"Request failed: {str(e)}"
-            ) from e
+            raise CarverAPIError(f"Request failed: {str(e)}") from e
 
     def _calculate_backoff_delay(self, retry_count: int) -> float:
         """
@@ -212,7 +211,7 @@ class CarverFeedsAPIClient:
             Delay in seconds
         """
         # Exponential backoff: initial_delay * (RETRY_BACKOFF_FACTOR ^ retry_count)
-        delay = self.initial_retry_delay * (RETRY_BACKOFF_FACTOR ** retry_count)
+        delay = self.initial_retry_delay * (RETRY_BACKOFF_FACTOR**retry_count)
         # Add jitter: random value between 0 and 25% of delay
         jitter = random.uniform(0, delay * 0.25)
         return delay + jitter
@@ -220,10 +219,10 @@ class CarverFeedsAPIClient:
     def _paginate(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
         limit: int = DEFAULT_PAGE_LIMIT,
-        fetch_all: bool = True
-    ) -> List[Dict]:
+        fetch_all: bool = True,
+    ) -> list[dict]:
         """
         Handle pagination for list endpoints using limit/offset pattern.
 
@@ -244,17 +243,17 @@ class CarverFeedsAPIClient:
 
         while True:
             # Set pagination parameters
-            page_params = {**params, 'limit': limit, 'offset': offset}
+            page_params = {**params, "limit": limit, "offset": offset}
 
             # Fetch page
-            response = self._make_request('GET', endpoint, page_params)
+            response = self._make_request("GET", endpoint, page_params)
 
             # Extract results - handle different response formats
             if isinstance(response, list):
                 results = response
             elif isinstance(response, dict):
                 # Try common pagination result keys
-                results = response.get('results', response.get('data', response.get('items', [])))
+                results = response.get("results", response.get("data", response.get("items", [])))
             else:
                 results = []
 
@@ -270,7 +269,7 @@ class CarverFeedsAPIClient:
         logger.info(f"Total records fetched: {len(all_results)}")
         return all_results
 
-    def list_topics(self) -> List[Dict]:
+    def list_topics(self) -> list[dict]:
         """
         Fetch all topics from /api/v1/feeds/topics.
 
@@ -284,9 +283,9 @@ class CarverFeedsAPIClient:
             >>> print(f"Found {len(topics)} topics")
         """
         logger.info("Fetching topics...")
-        return self._make_request('GET', '/api/v1/feeds/topics')
+        return self._make_request("GET", "/api/v1/feeds/topics")
 
-    def list_feeds(self) -> List[Dict]:
+    def list_feeds(self) -> list[dict]:
         """
         Fetch all feeds from /api/v1/feeds/.
 
@@ -304,22 +303,26 @@ class CarverFeedsAPIClient:
             >>> banking_feeds = [f for f in feeds if f.get('topic', {}).get('id') == 'topic-123']
         """
         logger.info("Fetching all feeds...")
-        return self._make_request('GET', '/api/v1/feeds/')
+        return self._make_request("GET", "/api/v1/feeds/")
 
     def list_entries(
         self,
-        feed_id: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        feed_id: str | None = None,
+        is_active: bool | None = None,
         limit: int = DEFAULT_PAGE_LIMIT,
-        fetch_all: bool = False
-    ) -> List[Dict]:
+        fetch_all: bool = False,
+    ) -> list[dict]:
         """
         Fetch entries from /api/v1/feeds/entries/list with pagination.
+
+        Note:
+            The API server enforces a maximum page size of 100 entries.
+            Requesting limit > 100 will return at most 100 entries per page.
 
         Args:
             feed_id: Optional feed ID to filter entries
             is_active: Optional filter for active status
-            limit: Number of records per page (default: 50)
+            limit: Number of records per page (default: 100, max: 100)
             fetch_all: If True, fetch all pages; if False, fetch only first page
 
         Returns:
@@ -336,26 +339,32 @@ class CarverFeedsAPIClient:
             ...     is_active=True,
             ...     fetch_all=True
             ... )
+            >>> # Fetch first 50 entries
+            >>> limited_entries = client.list_entries(limit=50, fetch_all=False)
         """
         params = {}
         if feed_id:
-            params['feed_id'] = feed_id
+            params["feed_id"] = feed_id
         if is_active is not None:
-            params['is_active'] = is_active
+            params["is_active"] = is_active
 
         logger.info(
             f"Fetching entries "
             f"(feed_id={feed_id}, is_active={is_active}, fetch_all={fetch_all})..."
         )
-        return self._paginate('/api/v1/feeds/entries/list', params, limit, fetch_all)
+        return self._paginate("/api/v1/feeds/entries/list", params, limit, fetch_all)
 
-    def get_feed_entries(self, feed_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> List[Dict]:
+    def get_feed_entries(self, feed_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> list[dict]:
         """
         Get entries for specific feed from /api/v1/feeds/{feed_id}/entries.
 
+        Note:
+            The API server enforces a maximum page size of 100 entries.
+            Requesting limit > 100 will return at most 100 entries.
+
         Args:
             feed_id: Feed ID
-            limit: Maximum number of entries to return
+            limit: Maximum number of entries to return (default: 100, max: 100)
 
         Returns:
             List of entry dictionaries
@@ -369,24 +378,28 @@ class CarverFeedsAPIClient:
             raise ValueError("feed_id is required")
 
         logger.info(f"Fetching entries for feed {feed_id}...")
-        params = {'limit': limit}
-        response = self._make_request('GET', f'/api/v1/feeds/{feed_id}/entries', params)
+        params = {"limit": limit}
+        response = self._make_request("GET", f"/api/v1/feeds/{feed_id}/entries", params)
 
         # Extract items from response if it's a dict, otherwise return as-is
         if isinstance(response, dict):
-            return response.get('items', [])
+            return response.get("items", [])
         return response
 
-    def get_topic_entries(self, topic_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> List[Dict]:
+    def get_topic_entries(self, topic_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> list[dict]:
         """
         Get entries for a specific topic.
 
         This endpoint fetches all entries across all feeds that belong to
         the specified topic.
 
+        Note:
+            The API server enforces a maximum page size of 100 entries.
+            Requesting limit > 100 will return at most 100 entries.
+
         Args:
             topic_id: Topic identifier (required)
-            limit: Maximum number of entries to return (default: 100)
+            limit: Maximum number of entries to return (default: 100, max: 100)
 
         Returns:
             List of entry dictionaries
@@ -403,12 +416,12 @@ class CarverFeedsAPIClient:
             raise ValueError("topic_id is required")
 
         logger.info(f"Fetching entries for topic {topic_id}...")
-        params = {'limit': limit}
-        response = self._make_request('GET', f'/api/v1/feeds/topics/{topic_id}/entries', params)
+        params = {"limit": limit}
+        response = self._make_request("GET", f"/api/v1/feeds/topics/{topic_id}/entries", params)
 
         # Extract items from response if it's a dict, otherwise return as-is
         if isinstance(response, dict):
-            return response.get('items', [])
+            return response.get("items", [])
         return response
 
 
@@ -441,8 +454,8 @@ def get_client(load_from_env: bool = True) -> CarverFeedsAPIClient:
     if load_from_env:
         load_dotenv()
 
-    api_key = os.getenv('CARVER_API_KEY')
-    base_url = os.getenv('CARVER_BASE_URL', DEFAULT_BASE_URL)
+    api_key = os.getenv("CARVER_API_KEY")
+    base_url = os.getenv("CARVER_BASE_URL", DEFAULT_BASE_URL)
 
     if not api_key:
         raise AuthenticationError(

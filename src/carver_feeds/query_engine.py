@@ -14,12 +14,13 @@ Example:
     ...     .to_dataframe()
 """
 
-from typing import List, Optional, Union
-from datetime import datetime
 import logging
-import pandas as pd
-from carver_feeds.data_manager import FeedsDataManager, create_data_manager
+from datetime import datetime
 
+import pandas as pd
+
+from carver_feeds.data_manager import FeedsDataManager, create_data_manager
+from carver_feeds.s3_client import S3ContentClient, get_s3_client
 
 # Configure module logger (library should not configure logging)
 logger = logging.getLogger(__name__)
@@ -60,24 +61,33 @@ class EntryQueryEngine:
         ...     .to_dataframe()
     """
 
-    def __init__(self, data_manager: FeedsDataManager):
+    def __init__(
+        self,
+        data_manager: FeedsDataManager,
+        fetch_content: bool = False,
+        s3_client: S3ContentClient | None = None,
+    ):
         """
         Initialize query engine with data manager.
 
+        New in v0.2.0: Supports S3 content fetching with fetch_content parameter.
+
         Args:
             data_manager: FeedsDataManager instance for fetching data
+            fetch_content: If True, automatically fetch content from S3 for all queries
+            s3_client: Optional S3ContentClient instance
 
         Raises:
             TypeError: If data_manager is not a FeedsDataManager instance
         """
         if not isinstance(data_manager, FeedsDataManager):
-            raise TypeError(
-                "data_manager must be an instance of FeedsDataManager"
-            )
+            raise TypeError("data_manager must be an instance of FeedsDataManager")
         self.data_manager = data_manager
+        self._fetch_content_on_load = fetch_content
+        self.s3_client = s3_client
         self._results = None
         self._initial_data_loaded = False
-        logger.info("EntryQueryEngine initialized")
+        logger.info(f"EntryQueryEngine initialized (fetch_content={fetch_content})")
 
     def _ensure_data_loaded(self):
         """
@@ -88,11 +98,15 @@ class EntryQueryEngine:
         """
         if not self._initial_data_loaded:
             logger.info("Loading hierarchical data for query engine...")
-            self._results = self.data_manager.get_hierarchical_view(include_entries=True)
+            self._results = self.data_manager.get_hierarchical_view(
+                include_entries=True,
+                fetch_content=self._fetch_content_on_load,
+                s3_client=self.s3_client,
+            )
             self._initial_data_loaded = True
             logger.info(f"Loaded {len(self._results)} entries for querying")
 
-    def chain(self) -> 'EntryQueryEngine':
+    def chain(self) -> "EntryQueryEngine":
         """
         Reset query to start fresh with all data.
 
@@ -116,11 +130,11 @@ class EntryQueryEngine:
 
     def search_entries(
         self,
-        keywords: Union[str, List[str]],
-        search_fields: Optional[List[str]] = None,
+        keywords: str | list[str],
+        search_fields: list[str] | None = None,
         case_sensitive: bool = False,
-        match_all: bool = False
-    ) -> 'EntryQueryEngine':
+        match_all: bool = False,
+    ) -> "EntryQueryEngine":
         """
         Search entries by keywords across specified fields.
 
@@ -175,15 +189,15 @@ class EntryQueryEngine:
         # Map user-friendly field names to actual column names in hierarchical view
         # The hierarchical view prefixes entry columns with 'entry_'
         field_mapping = {
-            'title': 'entry_title',
-            'content_markdown': 'entry_content_markdown',
-            'link': 'entry_link',
-            'description': 'entry_description',
+            "title": "entry_title",
+            "content_markdown": "entry_content_markdown",
+            "link": "entry_link",
+            "description": "entry_description",
             # Also support direct column names
-            'entry_title': 'entry_title',
-            'entry_content_markdown': 'entry_content_markdown',
-            'entry_link': 'entry_link',
-            'entry_description': 'entry_description',
+            "entry_title": "entry_title",
+            "entry_content_markdown": "entry_content_markdown",
+            "entry_link": "entry_link",
+            "entry_description": "entry_description",
         }
 
         # Map search fields to actual column names
@@ -206,11 +220,10 @@ class EntryQueryEngine:
                 keyword_mask = pd.Series([False] * len(self._results), index=self._results.index)
                 for field in actual_fields:
                     if field in self._results.columns:
-                        field_mask = self._results[field].fillna('').str.contains(
-                            keyword,
-                            case=case_sensitive,
-                            na=False,
-                            regex=True
+                        field_mask = (
+                            self._results[field]
+                            .fillna("")
+                            .str.contains(keyword, case=case_sensitive, na=False, regex=True)
                         )
                         keyword_mask = keyword_mask | field_mask
                 combined_mask = combined_mask & keyword_mask
@@ -220,11 +233,10 @@ class EntryQueryEngine:
             for keyword in keywords:
                 for field in actual_fields:
                     if field in self._results.columns:
-                        field_mask = self._results[field].fillna('').str.contains(
-                            keyword,
-                            case=case_sensitive,
-                            na=False,
-                            regex=True
+                        field_mask = (
+                            self._results[field]
+                            .fillna("")
+                            .str.contains(keyword, case=case_sensitive, na=False, regex=True)
                         )
                         combined_mask = combined_mask | field_mask
 
@@ -235,10 +247,8 @@ class EntryQueryEngine:
         return self
 
     def filter_by_topic(
-        self,
-        topic_id: Optional[str] = None,
-        topic_name: Optional[str] = None
-    ) -> 'EntryQueryEngine':
+        self, topic_id: str | None = None, topic_name: str | None = None
+    ) -> "EntryQueryEngine":
         """
         Filter entries by topic (id or name).
 
@@ -275,7 +285,9 @@ class EntryQueryEngine:
                 logger.info(f"Optimized filter: Loading only topic {topic_id} entries")
                 self._results = self.data_manager.get_hierarchical_view(
                     include_entries=True,
-                    topic_id=topic_id
+                    topic_id=topic_id,
+                    fetch_content=self._fetch_content_on_load,
+                    s3_client=self.s3_client,
                 )
                 self._initial_data_loaded = True
                 logger.info(f"Loaded {len(self._results)} entries for topic {topic_id}")
@@ -286,11 +298,7 @@ class EntryQueryEngine:
                 topics_df = self.data_manager.get_topics_df()
 
                 # Find matching topics (case-insensitive partial match)
-                mask = topics_df['name'].fillna('').str.contains(
-                    topic_name,
-                    case=False,
-                    na=False
-                )
+                mask = topics_df["name"].fillna("").str.contains(topic_name, case=False, na=False)
                 matching_topics = topics_df[mask]
 
                 if len(matching_topics) == 0:
@@ -301,24 +309,34 @@ class EntryQueryEngine:
 
                 # If single match, use optimized endpoint
                 if len(matching_topics) == 1:
-                    resolved_topic_id = matching_topics.iloc[0]['id']
-                    topic_display_name = matching_topics.iloc[0]['name']
-                    logger.info(f"Found single matching topic '{topic_display_name}' ({resolved_topic_id})")
+                    resolved_topic_id = matching_topics.iloc[0]["id"]
+                    topic_display_name = matching_topics.iloc[0]["name"]
+                    logger.info(
+                        f"Found single matching topic '{topic_display_name}' ({resolved_topic_id})"
+                    )
                     self._results = self.data_manager.get_hierarchical_view(
                         include_entries=True,
-                        topic_id=resolved_topic_id
+                        topic_id=resolved_topic_id,
+                        fetch_content=self._fetch_content_on_load,
+                        s3_client=self.s3_client,
                     )
                     self._initial_data_loaded = True
-                    logger.info(f"Loaded {len(self._results)} entries for topic {resolved_topic_id}")
+                    logger.info(
+                        f"Loaded {len(self._results)} entries for topic {resolved_topic_id}"
+                    )
                     return self
                 else:
                     # Multiple matches - fetch entries for each topic and combine
-                    logger.info(f"Found {len(matching_topics)} matching topics, fetching entries for all")
+                    logger.info(
+                        f"Found {len(matching_topics)} matching topics, fetching entries for all"
+                    )
                     all_entries = []
                     for _, topic in matching_topics.iterrows():
                         topic_entries = self.data_manager.get_hierarchical_view(
                             include_entries=True,
-                            topic_id=topic['id']
+                            topic_id=topic["id"],
+                            fetch_content=self._fetch_content_on_load,
+                            s3_client=self.s3_client,
                         )
                         all_entries.append(topic_entries)
 
@@ -328,7 +346,9 @@ class EntryQueryEngine:
                         self._results = pd.DataFrame()
 
                     self._initial_data_loaded = True
-                    logger.info(f"Loaded {len(self._results)} entries across {len(matching_topics)} topics")
+                    logger.info(
+                        f"Loaded {len(self._results)} entries across {len(matching_topics)} topics"
+                    )
                     return self
 
         # Standard path: filter from already-loaded data
@@ -336,14 +356,14 @@ class EntryQueryEngine:
 
         if topic_id:
             logger.info(f"Filtering by topic_id: {topic_id}")
-            self._results = self._results[self._results['topic_id'] == topic_id]
+            self._results = self._results[self._results["topic_id"] == topic_id]
         elif topic_name:
             logger.info(f"Filtering by topic_name: {topic_name}")
-            if 'topic_name' in self._results.columns:
-                mask = self._results['topic_name'].fillna('').str.contains(
-                    topic_name,
-                    case=False,
-                    na=False
+            if "topic_name" in self._results.columns:
+                mask = (
+                    self._results["topic_name"]
+                    .fillna("")
+                    .str.contains(topic_name, case=False, na=False)
                 )
                 self._results = self._results[mask]
             else:
@@ -353,10 +373,8 @@ class EntryQueryEngine:
         return self
 
     def filter_by_feed(
-        self,
-        feed_id: Optional[str] = None,
-        feed_name: Optional[str] = None
-    ) -> 'EntryQueryEngine':
+        self, feed_id: str | None = None, feed_name: str | None = None
+    ) -> "EntryQueryEngine":
         """
         Filter entries by feed (id or name).
 
@@ -393,7 +411,9 @@ class EntryQueryEngine:
                 logger.info(f"Optimized filter: Loading only feed {feed_id} entries")
                 self._results = self.data_manager.get_hierarchical_view(
                     include_entries=True,
-                    feed_id=feed_id
+                    feed_id=feed_id,
+                    fetch_content=self._fetch_content_on_load,
+                    s3_client=self.s3_client,
                 )
                 self._initial_data_loaded = True
                 logger.info(f"Loaded {len(self._results)} entries for feed {feed_id}")
@@ -404,11 +424,7 @@ class EntryQueryEngine:
                 feeds_df = self.data_manager.get_feeds_df()
 
                 # Find matching feeds (case-insensitive partial match)
-                mask = feeds_df['name'].fillna('').str.contains(
-                    feed_name,
-                    case=False,
-                    na=False
-                )
+                mask = feeds_df["name"].fillna("").str.contains(feed_name, case=False, na=False)
                 matching_feeds = feeds_df[mask]
 
                 if len(matching_feeds) == 0:
@@ -419,24 +435,32 @@ class EntryQueryEngine:
 
                 # If single match, use optimized endpoint
                 if len(matching_feeds) == 1:
-                    resolved_feed_id = matching_feeds.iloc[0]['id']
-                    feed_display_name = matching_feeds.iloc[0]['name']
-                    logger.info(f"Found single matching feed '{feed_display_name}' ({resolved_feed_id})")
+                    resolved_feed_id = matching_feeds.iloc[0]["id"]
+                    feed_display_name = matching_feeds.iloc[0]["name"]
+                    logger.info(
+                        f"Found single matching feed '{feed_display_name}' ({resolved_feed_id})"
+                    )
                     self._results = self.data_manager.get_hierarchical_view(
                         include_entries=True,
-                        feed_id=resolved_feed_id
+                        feed_id=resolved_feed_id,
+                        fetch_content=self._fetch_content_on_load,
+                        s3_client=self.s3_client,
                     )
                     self._initial_data_loaded = True
                     logger.info(f"Loaded {len(self._results)} entries for feed {resolved_feed_id}")
                     return self
                 else:
                     # Multiple matches - fetch entries for each feed and combine
-                    logger.info(f"Found {len(matching_feeds)} matching feeds, fetching entries for all")
+                    logger.info(
+                        f"Found {len(matching_feeds)} matching feeds, fetching entries for all"
+                    )
                     all_entries = []
                     for _, feed in matching_feeds.iterrows():
                         feed_entries = self.data_manager.get_hierarchical_view(
                             include_entries=True,
-                            feed_id=feed['id']
+                            feed_id=feed["id"],
+                            fetch_content=self._fetch_content_on_load,
+                            s3_client=self.s3_client,
                         )
                         all_entries.append(feed_entries)
 
@@ -446,7 +470,9 @@ class EntryQueryEngine:
                         self._results = pd.DataFrame()
 
                     self._initial_data_loaded = True
-                    logger.info(f"Loaded {len(self._results)} entries across {len(matching_feeds)} feeds")
+                    logger.info(
+                        f"Loaded {len(self._results)} entries across {len(matching_feeds)} feeds"
+                    )
                     return self
 
         # Standard path: filter from already-loaded data
@@ -454,14 +480,14 @@ class EntryQueryEngine:
 
         if feed_id:
             logger.info(f"Filtering by feed_id: {feed_id}")
-            self._results = self._results[self._results['feed_id'] == feed_id]
+            self._results = self._results[self._results["feed_id"] == feed_id]
         elif feed_name:
             logger.info(f"Filtering by feed_name: {feed_name}")
-            if 'feed_name' in self._results.columns:
-                mask = self._results['feed_name'].fillna('').str.contains(
-                    feed_name,
-                    case=False,
-                    na=False
+            if "feed_name" in self._results.columns:
+                mask = (
+                    self._results["feed_name"]
+                    .fillna("")
+                    .str.contains(feed_name, case=False, na=False)
                 )
                 self._results = self._results[mask]
             else:
@@ -471,10 +497,8 @@ class EntryQueryEngine:
         return self
 
     def filter_by_date(
-        self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
-    ) -> 'EntryQueryEngine':
+        self, start_date: datetime | None = None, end_date: datetime | None = None
+    ) -> "EntryQueryEngine":
         """
         Filter entries by date range.
 
@@ -507,7 +531,7 @@ class EntryQueryEngine:
             logger.warning("Neither start_date nor end_date provided, no filtering applied")
             return self
 
-        date_field = 'entry_published_at'
+        date_field = "entry_published_at"
         if date_field not in self._results.columns:
             logger.warning(f"{date_field} column not found in data")
             return self
@@ -515,15 +539,12 @@ class EntryQueryEngine:
         # Ensure date column is datetime type
         if not pd.api.types.is_datetime64_any_dtype(self._results[date_field]):
             logger.info(f"Converting {date_field} to datetime")
-            self._results[date_field] = pd.to_datetime(
-                self._results[date_field],
-                errors='coerce'
-            )
+            self._results[date_field] = pd.to_datetime(self._results[date_field], errors="coerce")
 
         # Handle timezone awareness to avoid comparison errors
         # If the date column is timezone-aware and user dates are not, make user dates timezone-aware
         date_column = self._results[date_field]
-        if hasattr(date_column.dtype, 'tz') and date_column.dtype.tz is not None:
+        if hasattr(date_column.dtype, "tz") and date_column.dtype.tz is not None:
             # Column is timezone-aware
             if start_date and start_date.tzinfo is None:
                 start_date = start_date.replace(tzinfo=date_column.dtype.tz)
@@ -543,7 +564,7 @@ class EntryQueryEngine:
         logger.info(f"Date filter returned {len(self._results)} entries")
         return self
 
-    def filter_by_active(self, is_active: bool = True) -> 'EntryQueryEngine':
+    def filter_by_active(self, is_active: bool = True) -> "EntryQueryEngine":
         """
         Filter entries by active status.
 
@@ -565,13 +586,49 @@ class EntryQueryEngine:
 
         logger.info(f"Filtering by is_active: {is_active}")
 
-        active_field = 'entry_is_active'
+        active_field = "entry_is_active"
         if active_field not in self._results.columns:
             logger.warning(f"{active_field} column not found in data")
             return self
 
         self._results = self._results[self._results[active_field] == is_active]
         logger.info(f"Active filter returned {len(self._results)} entries")
+
+        return self
+
+    def fetch_content(self, s3_client: S3ContentClient | None = None) -> "EntryQueryEngine":
+        """
+        Fetch content from S3 for current filtered results.
+
+        This allows users to filter first (narrow down results), then fetch
+        content only for matching entries (performance optimization).
+
+        Args:
+            s3_client: Optional S3ContentClient. If None, creates from env.
+
+        Returns:
+            EntryQueryEngine: Self for method chaining
+
+        Example:
+            >>> qe = create_query_engine()
+            >>> # Filter first, then fetch content only for filtered results
+            >>> results = qe.filter_by_topic(topic_name="Banking") \\
+            ...     .filter_by_date(start_date=datetime(2024, 1, 1)) \\
+            ...     .fetch_content() \\
+            ...     .to_dataframe()
+            >>> print(results[['entry_title', 'entry_content_markdown']].head())
+        """
+        self._ensure_data_loaded()
+
+        # Get or create S3 client
+        if s3_client is None:
+            s3_client = get_s3_client()
+            if s3_client is None:
+                logger.error("Cannot fetch content: S3 credentials not configured")
+                return self
+
+        logger.info(f"Fetching content for {len(self._results)} filtered entries...")
+        self._results = self.data_manager.fetch_contents_from_s3(self._results, s3_client)
 
         return self
 
@@ -593,7 +650,7 @@ class EntryQueryEngine:
         logger.info(f"Returning {len(self._results)} entries as DataFrame")
         return self._results.copy()
 
-    def to_dict(self) -> List[dict]:
+    def to_dict(self) -> list[dict]:
         """
         Return current results as list of dictionaries.
 
@@ -610,7 +667,7 @@ class EntryQueryEngine:
         """
         self._ensure_data_loaded()
         logger.info(f"Returning {len(self._results)} entries as list of dicts")
-        return self._results.to_dict('records')
+        return self._results.to_dict("records")
 
     def to_json(self, indent: int = 2) -> str:
         """
@@ -629,7 +686,7 @@ class EntryQueryEngine:
         """
         self._ensure_data_loaded()
         logger.info(f"Returning {len(self._results)} entries as JSON")
-        return self._results.to_json(orient='records', indent=indent, date_format='iso')
+        return self._results.to_json(orient="records", indent=indent, date_format="iso")
 
     def to_csv(self, filepath: str, index: bool = False) -> str:
         """
@@ -654,9 +711,13 @@ class EntryQueryEngine:
         return filepath
 
 
-def create_query_engine() -> EntryQueryEngine:
+def create_query_engine(
+    fetch_content: bool = False, s3_client: S3ContentClient | None = None
+) -> EntryQueryEngine:
     """
     Factory function to create query engine with default data manager.
+
+    New in v0.2.0: Supports S3 content fetching with fetch_content parameter.
 
     This is a convenience function that creates a query engine with
     a data manager configured from environment variables.
@@ -664,6 +725,12 @@ def create_query_engine() -> EntryQueryEngine:
     Environment Variables:
         CARVER_API_KEY: API key for authentication (required)
         CARVER_BASE_URL: Base URL for API (optional, defaults to production)
+        AWS_PROFILE_NAME: AWS profile for S3 content fetching (required for fetch_content=True)
+        AWS_REGION: AWS region (optional, defaults to us-east-1)
+
+    Args:
+        fetch_content: If True, automatically fetch content from S3 for all queries
+        s3_client: Optional S3ContentClient instance
 
     Returns:
         EntryQueryEngine: Configured query engine instance
@@ -673,8 +740,19 @@ def create_query_engine() -> EntryQueryEngine:
 
     Example:
         >>> from carver_feeds import create_query_engine
+        >>> # Without content (fast)
         >>> qe = create_query_engine()
         >>> results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+
+        >>> # With content (fetches from S3)
+        >>> qe = create_query_engine(fetch_content=True)
+        >>> results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+
+        >>> # Fetch content on demand (recommended)
+        >>> qe = create_query_engine()
+        >>> results = qe.filter_by_topic(topic_name="Banking") \\
+        ...     .fetch_content() \\
+        ...     .to_dataframe()
     """
     data_manager = create_data_manager()
-    return EntryQueryEngine(data_manager)
+    return EntryQueryEngine(data_manager, fetch_content, s3_client)

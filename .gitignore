@@ -26,6 +26,8 @@ wheels/
 .env.local
 
 # IDE
+docs/README.md
+docs/LESSONS.md
 CLAUDE.md
 .claude/
 .vscode/
@@ -59,3 +61,7 @@ htmlcov/
 
 # Ruff
 .ruff_cache/
+
+# PyPi
+.pypirc
+pypi.sh

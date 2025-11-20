@@ -29,7 +29,7 @@ def sample_topics() -> List[Dict]:
             "description": "Banking regulations",
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-01T00:00:00Z",
-            "is_active": True
+            "is_active": True,
         },
         {
             "id": "topic-2",
@@ -37,8 +37,8 @@ def sample_topics() -> List[Dict]:
             "description": "Healthcare regulations",
             "created_at": "2024-01-01T00:00:00Z",
             "updated_at": "2024-01-01T00:00:00Z",
-            "is_active": True
-        }
+            "is_active": True,
+        },
     ]
 
 
@@ -53,7 +53,7 @@ def sample_feeds() -> List[Dict]:
             "topic": {"id": "topic-1", "name": "Banking"},
             "description": "Latest banking news",
             "created_at": "2024-01-01T00:00:00Z",
-            "is_active": True
+            "is_active": True,
         },
         {
             "id": "feed-2",
@@ -62,8 +62,8 @@ def sample_feeds() -> List[Dict]:
             "topic": {"id": "topic-2", "name": "Healthcare"},
             "description": "Healthcare updates",
             "created_at": "2024-01-01T00:00:00Z",
-            "is_active": True
-        }
+            "is_active": True,
+        },
     ]
 
 
@@ -78,7 +78,7 @@ def sample_entries() -> List[Dict]:
             "content_markdown": "# New Banking Regulation\nDetails about the regulation...",
             "published_date": "2024-01-15T10:00:00Z",
             "created_at": "2024-01-15T10:00:00Z",
-            "is_active": True
+            "is_active": True,
         },
         {
             "id": "entry-2",
@@ -87,8 +87,8 @@ def sample_entries() -> List[Dict]:
             "content_markdown": "# Healthcare Compliance\nNew compliance requirements...",
             "published_date": "2024-01-16T10:00:00Z",
             "created_at": "2024-01-16T10:00:00Z",
-            "is_active": True
-        }
+            "is_active": True,
+        },
     ]
 
 
