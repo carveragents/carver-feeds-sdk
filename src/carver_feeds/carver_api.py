@@ -270,6 +270,52 @@ class CarverFeedsAPIClient:
             return response.get("items", [])
         return response
 
+    def get_user_topic_subscriptions(self, user_id: str) -> dict[str, Any]:
+        """
+        Get topic subscriptions for a specific user.
+
+        Fetches the list of topics that a user has subscribed to from
+        /api/v1/core/users/{user_id}/topics/subscriptions.
+
+        Args:
+            user_id: User identifier (required)
+
+        Returns:
+            Dictionary with 'subscriptions' (list of topic dicts) and 'total_count' (int)
+
+        Raises:
+            ValueError: If user_id is not provided
+            AuthenticationError: If authentication fails
+            CarverAPIError: For other API errors
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> result = client.get_user_topic_subscriptions("user-123")
+            >>> print(f"User has {result['total_count']} subscriptions")
+            >>> for topic in result['subscriptions']:
+            ...     print(f"- {topic['name']}")
+        """
+        if not user_id:
+            raise ValueError("user_id is required")
+
+        logger.info(f"Fetching topic subscriptions for user {user_id}...")
+        endpoint = f"/api/v1/core/users/{user_id}/topics/subscriptions"
+        response = self._make_request("GET", endpoint)
+
+        # Validate response structure
+        if not isinstance(response, dict):
+            raise CarverAPIError(
+                f"Unexpected response format. Expected dict, got {type(response).__name__}"
+            )
+
+        if "subscriptions" not in response:
+            raise CarverAPIError(
+                "Response missing 'subscriptions' field. " f"Response: {response}"
+            )
+
+        return response
+
 
 def get_client(load_from_env: bool = True) -> CarverFeedsAPIClient:
     """

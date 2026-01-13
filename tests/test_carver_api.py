@@ -75,6 +75,69 @@ class TestGetClient:
         assert isinstance(client, CarverFeedsAPIClient)
 
 
+class TestGetUserTopicSubscriptions:
+    """Tests for get_user_topic_subscriptions method."""
+
+    def test_get_user_topic_subscriptions_requires_user_id(self):
+        """Test that get_user_topic_subscriptions requires user_id parameter."""
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(ValueError, match="user_id is required"):
+            client.get_user_topic_subscriptions(user_id="")
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_user_topic_subscriptions_success(self, mock_make_request, sample_user_subscriptions):
+        """Test successful user topic subscriptions retrieval."""
+        mock_make_request.return_value = sample_user_subscriptions
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.get_user_topic_subscriptions(user_id="user-123")
+
+        assert isinstance(result, dict)
+        assert "subscriptions" in result
+        assert "total_count" in result
+        assert len(result["subscriptions"]) == 2
+        assert result["total_count"] == 2
+
+        # Verify the correct endpoint was called
+        mock_make_request.assert_called_once_with(
+            "GET", "/api/v1/core/users/user-123/topics/subscriptions"
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_user_topic_subscriptions_validates_response_structure(self, mock_make_request):
+        """Test that get_user_topic_subscriptions validates response structure."""
+        # Test with non-dict response
+        mock_make_request.return_value = []
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(CarverAPIError, match="Unexpected response format"):
+            client.get_user_topic_subscriptions(user_id="user-123")
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_user_topic_subscriptions_validates_subscriptions_field(self, mock_make_request):
+        """Test that get_user_topic_subscriptions validates subscriptions field presence."""
+        # Test with dict missing 'subscriptions' field
+        mock_make_request.return_value = {"total_count": 0}
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(CarverAPIError, match="Response missing 'subscriptions' field"):
+            client.get_user_topic_subscriptions(user_id="user-123")
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_user_topic_subscriptions_empty_list(self, mock_make_request):
+        """Test get_user_topic_subscriptions with empty subscriptions list."""
+        mock_make_request.return_value = {"subscriptions": [], "total_count": 0}
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.get_user_topic_subscriptions(user_id="user-123")
+
+        assert result["subscriptions"] == []
+        assert result["total_count"] == 0
+
+
 # Additional tests can be added here for:
 # - _make_request method
 # - _paginate method

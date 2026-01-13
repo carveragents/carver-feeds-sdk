@@ -118,6 +118,74 @@ class FeedsDataManager:
             logger.error(f"Unexpected error converting topics to DataFrame: {e}")
             raise CarverAPIError(f"Data conversion failed: {e}") from e
 
+    def get_user_topic_subscriptions_df(self, user_id: str) -> pd.DataFrame:
+        """
+        Fetch user topic subscriptions and return as DataFrame.
+
+        Returns a DataFrame with the following columns:
+        - id: Topic ID
+        - name: Topic name
+        - description: Topic description
+        - base_domain: Base domain (may be null)
+
+        Note: The API response includes a total_count field which is not included
+        in the DataFrame. Access the raw API response if you need this value.
+
+        Args:
+            user_id: User identifier (required)
+
+        Returns:
+            pd.DataFrame: User's topic subscriptions with standardized schema
+
+        Raises:
+            ValueError: If user_id is not provided
+            CarverAPIError: If API request fails
+
+        Example:
+            >>> dm = create_data_manager()
+            >>> subscriptions = dm.get_user_topic_subscriptions_df("user-123")
+            >>> print(f"User has {len(subscriptions)} subscriptions")
+            >>> print(subscriptions[['id', 'name']].head())
+        """
+        if not user_id:
+            raise ValueError("user_id is required")
+
+        logger.info(f"Fetching topic subscriptions for user {user_id} as DataFrame...")
+
+        try:
+            # Fetch data from API
+            response = self.api_client.get_user_topic_subscriptions(user_id)
+
+            # Extract subscriptions list from response
+            subscriptions_data = response.get("subscriptions", [])
+
+            if not subscriptions_data:
+                logger.info(f"User {user_id} has no topic subscriptions")
+                # Return empty DataFrame with expected columns
+                return pd.DataFrame(columns=["id", "name", "description", "base_domain"])
+
+            # Convert to DataFrame
+            expected_columns = [
+                "id",
+                "name",
+                "description",
+                "base_domain",
+            ]
+            df = self._json_to_dataframe(subscriptions_data, expected_columns)
+
+            logger.info(
+                f"Successfully converted {len(df)} topic subscriptions to DataFrame "
+                f"(total_count: {response.get('total_count', 'unknown')})"
+            )
+            return df
+
+        except CarverAPIError as e:
+            logger.error(f"Failed to fetch topic subscriptions: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error converting topic subscriptions to DataFrame: {e}")
+            raise CarverAPIError(f"Data conversion failed: {e}") from e
+
     def get_topic_entries_df(
         self,
         topic_id: str,

@@ -341,6 +341,103 @@ class TestExtractMetadataFields:
         assert result["content_status"] is None
 
 
+class TestGetUserTopicSubscriptionsDF:
+    """Tests for get_user_topic_subscriptions_df method."""
+
+    def test_get_user_topic_subscriptions_df_requires_user_id(self, mock_api_client):
+        """Test that get_user_topic_subscriptions_df requires user_id parameter."""
+        dm = FeedsDataManager(mock_api_client)
+
+        with pytest.raises(ValueError, match="user_id is required"):
+            dm.get_user_topic_subscriptions_df(user_id="")
+
+    def test_get_user_topic_subscriptions_df_returns_dataframe(
+        self, mock_api_client, sample_user_subscriptions
+    ):
+        """Test that get_user_topic_subscriptions_df returns a DataFrame."""
+        mock_api_client.get_user_topic_subscriptions.return_value = sample_user_subscriptions
+        dm = FeedsDataManager(mock_api_client)
+
+        result = dm.get_user_topic_subscriptions_df(user_id="user-123")
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 2
+        assert "id" in result.columns
+        assert "name" in result.columns
+        assert "description" in result.columns
+        assert "base_domain" in result.columns
+
+        # Verify API was called with correct user_id
+        mock_api_client.get_user_topic_subscriptions.assert_called_once_with("user-123")
+
+    def test_get_user_topic_subscriptions_df_empty_subscriptions(self, mock_api_client):
+        """Test get_user_topic_subscriptions_df with empty subscriptions list."""
+        mock_api_client.get_user_topic_subscriptions.return_value = {
+            "subscriptions": [],
+            "total_count": 0,
+        }
+        dm = FeedsDataManager(mock_api_client)
+
+        result = dm.get_user_topic_subscriptions_df(user_id="user-123")
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+        # Verify expected columns exist even with empty DataFrame
+        assert list(result.columns) == ["id", "name", "description", "base_domain"]
+
+    def test_get_user_topic_subscriptions_df_handles_null_base_domain(
+        self, mock_api_client
+    ):
+        """Test get_user_topic_subscriptions_df handles null base_domain values."""
+        mock_api_client.get_user_topic_subscriptions.return_value = {
+            "subscriptions": [
+                {
+                    "id": "topic-1",
+                    "name": "Topic 1",
+                    "description": "Description 1",
+                    "base_domain": None,
+                },
+                {
+                    "id": "topic-2",
+                    "name": "Topic 2",
+                    "description": "Description 2",
+                    "base_domain": "example.com",
+                },
+            ],
+            "total_count": 2,
+        }
+        dm = FeedsDataManager(mock_api_client)
+
+        result = dm.get_user_topic_subscriptions_df(user_id="user-123")
+
+        assert len(result) == 2
+        assert pd.isna(result.iloc[0]["base_domain"])
+        assert result.iloc[1]["base_domain"] == "example.com"
+
+    def test_get_user_topic_subscriptions_df_validates_data(self, mock_api_client):
+        """Test that get_user_topic_subscriptions_df validates subscription data."""
+        # Test with subscriptions containing extra fields
+        mock_api_client.get_user_topic_subscriptions.return_value = {
+            "subscriptions": [
+                {
+                    "id": "topic-1",
+                    "name": "Topic 1",
+                    "description": "Description 1",
+                    "base_domain": None,
+                    "extra_field": "extra_value",
+                }
+            ],
+            "total_count": 1,
+        }
+        dm = FeedsDataManager(mock_api_client)
+
+        result = dm.get_user_topic_subscriptions_df(user_id="user-123")
+
+        # Should successfully convert even with extra fields
+        assert len(result) == 1
+        assert "extra_field" in result.columns
+
+
 # Additional tests can be added here for:
 # - get_hierarchical_view method with S3 content
 # - _json_to_dataframe method

@@ -93,6 +93,28 @@ def sample_entries() -> List[Dict]:
 
 
 @pytest.fixture
+def sample_user_subscriptions() -> Dict:
+    """Sample user topic subscription data for testing (mimics API response format)."""
+    return {
+        "subscriptions": [
+            {
+                "id": "topic-1",
+                "name": "Abu Dhabi Global Market",
+                "description": "A financial free zone in Abu Dhabi...",
+                "base_domain": None,
+            },
+            {
+                "id": "topic-2",
+                "name": "Reserve Bank of India",
+                "description": "India's central banking institution...",
+                "base_domain": "rbi.org.in",
+            },
+        ],
+        "total_count": 2,
+    }
+
+
+@pytest.fixture
 def mock_successful_response():
     """Mock a successful API response."""
     response = MagicMock()
