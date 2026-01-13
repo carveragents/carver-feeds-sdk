@@ -122,7 +122,7 @@ qe = create_query_engine()
 
 # Build complex query with method chaining
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .search_entries("regulation") \
     .to_dataframe()
@@ -183,27 +183,27 @@ Entry (individual articles/entries)
 
 ```python
 # Single keyword (case-insensitive by default, searches in title/description)
-qe.filter_by_topic(topic_name="Banking") \
+qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries("regulation", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
 # Multiple keywords with OR logic (matches ANY)
-qe.filter_by_topic(topic_name="Banking") \
+qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries(["regulation", "compliance", "enforcement"], match_all=False,
                    search_fields=['entry_title', 'entry_description'])
 
 # Multiple keywords with AND logic (matches ALL)
-qe.filter_by_topic(topic_name="Banking") \
-    .search_entries(["banking", "regulation"], match_all=True,
+qe.filter_by_topic(topic_name="Abu Dhabi") \
+    .search_entries(["financial", "regulation"], match_all=True,
                    search_fields=['entry_title', 'entry_description'])
 
 # Search in full content from S3 (requires fetch_content)
-qe.filter_by_topic(topic_name="Banking") \
+qe.filter_by_topic(topic_name="Abu Dhabi") \
     .fetch_content() \
     .search_entries("regulation")  # Searches in entry_content_markdown
 
 # Case-sensitive search
-qe.filter_by_topic(topic_name="Banking") \
+qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries("SEC", case_sensitive=True, search_fields=['entry_title'])
 ```
 
@@ -337,10 +337,10 @@ The query engine automatically uses optimized endpoints when you filter before l
 ```python
 # Optimal: Query engine uses get_topic_entries() endpoint
 qe = create_query_engine()
-results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+results = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
 # Required pattern: Always start with filter_by_topic()
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .to_dataframe()
 ```
@@ -352,7 +352,7 @@ Apply filters in order of specificity (narrowest first):
 ```python
 # Good: Narrow by topic first, then apply other filters
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .search_entries("regulation") \
     .to_dataframe()
@@ -366,7 +366,7 @@ Data is cached after the first load:
 qe = create_query_engine()
 
 # First query: loads data from API (~30-60 seconds for all entries)
-results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+results1 = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
 # Subsequent queries: use cached data (instant)
 results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
@@ -422,7 +422,7 @@ except CarverAPIError as e:
 
    try:
        qe = create_query_engine()
-       results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+       results = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
        if len(results) == 0:
            print("No results found. Try broadening search criteria.")
@@ -433,8 +433,8 @@ except CarverAPIError as e:
 4. **Export large result sets** to CSV for external processing:
    ```python
    # For large datasets, export rather than keeping in memory
-   results = qe.filter_by_topic(topic_name="Banking")
-   results.to_csv("banking_entries.csv")  # Saves ~50-100 MB to disk
+   results = qe.filter_by_topic(topic_name="Abu Dhabi")
+   results.to_csv("abu_dhabi_entries.csv")  # Saves ~50-100 MB to disk
    ```
 
 ## 🤝 Contributing

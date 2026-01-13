@@ -37,7 +37,7 @@ This directory contains example scripts and comprehensive usage documentation fo
    CARVER_API_KEY=your_api_key_here
    CARVER_BASE_URL=https://app.carveragents.ai  # optional
 
-   # NEW in v0.2.0: S3 Content Fetching (optional)
+   # S3 Content Fetching (optional)
    AWS_PROFILE_NAME=your-aws-profile  # optional, for S3 content
    AWS_REGION=us-east-1  # optional, defaults to us-east-1
    ```
@@ -68,7 +68,7 @@ Features:
 - Direct API client usage
 - DataFrame operations
 - Fetching topics and entries
-- **NEW in v0.2.0**: S3 content fetching
+- S3 content fetching
 
 ### Advanced Queries
 
@@ -84,25 +84,25 @@ Features:
 - Keyword search
 - Date range filtering
 - Export to CSV/JSON
-- **NEW in v0.2.0**: Lazy loading with S3 content
+- Lazy loading with S3 content
 
-### S3 Content Fetching (v0.2.0+)
+### User Topic Subscriptions
 
-Demonstrates S3 content fetching capabilities:
+Demonstrates working with user topic subscriptions:
 
 ```bash
-python s3_content_fetching.py
+python user_subscriptions.py
 ```
 
 Features:
-- **NEW in v0.2.0**: S3 client configuration and setup
-- **NEW in v0.2.0**: Eager loading (fetch content immediately)
-- **NEW in v0.2.0**: Lazy loading (filter first, fetch later)
-- **NEW in v0.2.0**: Direct S3 client usage
-- **NEW in v0.2.0**: Batch fetching with parallel workers
-- **NEW in v0.2.0**: Working with extracted_metadata fields
+- Fetching user subscriptions via API client
+- Working with subscriptions as DataFrames
+- Filtering entries based on user subscriptions
+- Analyzing subscription patterns
+- Aggregating statistics across subscribed topics
+- Exporting subscription data
 
-**Note:** Requires AWS credentials configured. See prerequisites above.
+**Note**: Replace `your-user-id-here` in the script with a valid user ID from your Carver system.
 
 ---
 
@@ -144,7 +144,7 @@ Inactive topics: 6
 
 Available Topics:
                     id                           name                           description  is_active
-0           topic-123                Banking Regulation  Updates on banking and financial...       True
+0           topic-123                Abu Dhabi Global Market  Updates on banking and financial...       True
 1           topic-456          Healthcare Compliance  Healthcare regulatory changes...            True
 2           topic-789         Environmental Standards  Environmental protection updates...        True
 ...
@@ -159,7 +159,7 @@ Available Topics:
 
 ## Example 2: Search Entries in a Topic
 
-**Scenario**: You want to search for "compliance" in entries from the Banking topic.
+**Scenario**: You want to search for "compliance" in entries from the Abu Dhabi topic.
 
 **Code**:
 ```python
@@ -167,13 +167,13 @@ from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
-# Search for compliance in banking entries (title/description, no S3 required)
+# Search for compliance in Abu Dhabi regulatory entries (title/description, no S3 required)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries("compliance", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
-print(f"Found {len(results)} entries about compliance in Banking topic\n")
+print(f"Found {len(results)} entries about compliance in Abu Dhabi topic\n")
 
 # Display sample entries
 if len(results) > 0:
@@ -188,7 +188,7 @@ if len(results) > 0:
 
 **Expected Output**:
 ```
-Found 387 entries about compliance in Banking topic
+Found 387 entries about compliance in Abu Dhabi topic
 
 Sample entries:
 
@@ -213,7 +213,7 @@ Description: The Federal Deposit Insurance Corporation issued new guidance for b
 ```python
 # Search in full article content (requires AWS credentials configured)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .fetch_content() \
     .search_entries("compliance") \
     .to_dataframe()
@@ -237,7 +237,7 @@ for idx, row in results.head(2).iterrows():
 **Variation - Multiple Topics**:
 ```python
 # Search across multiple topics
-banking_results = qe.filter_by_topic(topic_name="Banking") \
+abu_dhabi_results = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries("compliance", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 healthcare_results = qe.chain().filter_by_topic(topic_name="Healthcare") \
@@ -245,17 +245,17 @@ healthcare_results = qe.chain().filter_by_topic(topic_name="Healthcare") \
     .to_dataframe()
 
 import pandas as pd
-all_results = pd.concat([banking_results, healthcare_results])
+all_results = pd.concat([abu_dhabi_results, healthcare_results])
 
 print(f"Total compliance mentions: {len(all_results)}")
-print(f"Banking: {len(banking_results)}, Healthcare: {len(healthcare_results)}")
+print(f"Abu Dhabi: {len(abu_dhabi_results)}, Healthcare: {len(healthcare_results)}")
 ```
 
 ---
 
 ## Example 3: Complex Multi-Filter Query
 
-**Scenario**: You want to find recent active entries from Banking topic that mention both "regulation" AND "fintech", published in the last 3 months.
+**Scenario**: You want to find recent active entries from Abu Dhabi topic that mention both "regulation" AND "fintech", published in the last 3 months.
 
 **Code**:
 ```python
@@ -269,14 +269,14 @@ three_months_ago = datetime.now() - timedelta(days=90)
 
 # Build complex query with multiple filters (search in title/description)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_active(is_active=True) \
     .filter_by_date(start_date=three_months_ago) \
     .search_entries(["regulation", "fintech"], match_all=True,
                    search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
-print(f"Found {len(results)} recent banking entries about fintech regulation\n")
+print(f"Found {len(results)} recent regulatory entries about fintech regulation\n")
 
 if len(results) > 0:
     # Sort by date (most recent first)
@@ -296,7 +296,7 @@ if len(results) > 0:
             print(f"Preview: {preview}...")
 
     # Export to CSV for further analysis
-    csv_path = results.to_csv("banking_fintech_regulations.csv")
+    csv_path = results.to_csv("abu_dhabi_fintech_regulations.csv")
     print(f"\n\nFull results exported to: {csv_path}")
 else:
     print("No results found. Try:")
@@ -307,27 +307,27 @@ else:
 
 **Expected Output**:
 ```
-Found 12 recent banking entries about fintech regulation
+Found 12 recent regulatory entries about fintech regulation
 
 Most recent entries:
 
 ================================================================================
 Title: Federal Reserve Issues New Guidance on Fintech Partnerships
-Topic: Banking Regulation
+Topic: Abu Dhabi Global Market
 Published: 2024-10-22 14:30
 Link: https://www.federalreserve.gov/newsevents/pressreleases/2024/20241022a.htm
 Preview: The Federal Reserve Board today issued final guidance on managing risks in third-party fintech relationships. The regulation addresses key areas including due diligence, ongoing monitoring, and risk management...
 
 ================================================================================
 Title: OCC Announces Fintech Charter Regulation Framework
-Topic: Banking Regulation
+Topic: Abu Dhabi Global Market
 Published: 2024-10-15 10:00
 Link: https://www.occ.gov/news-issuances/bulletins/2024/bulletin-2024-45.html
 Preview: The Office of the Comptroller of the Currency today released a comprehensive framework for regulating fintech companies seeking national bank charters. The new regulation establishes clear requirements...
 
 ...
 
-Full results exported to: /Users/username/banking_fintech_regulations.csv
+Full results exported to: /Users/username/abu_dhabi_fintech_regulations.csv
 ```
 
 **Use Cases**:
@@ -339,7 +339,7 @@ Full results exported to: /Users/username/banking_fintech_regulations.csv
 ```python
 # Find entries mentioning regulation OR fintech (not necessarily both)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_active(is_active=True) \
     .filter_by_date(start_date=three_months_ago) \
     .search_entries(["regulation", "fintech"], match_all=False,
@@ -465,7 +465,7 @@ quarters = [
     ("Q4 2024", datetime(2024, 10, 1), datetime(2024, 12, 31)),
 ]
 
-print("Banking Regulation Activity by Quarter (2024)\n")
+print("Abu Dhabi Global Market Activity by Quarter (2024)\n")
 print("="*60)
 
 all_results = []
@@ -473,7 +473,7 @@ all_results = []
 for quarter_name, start_date, end_date in quarters:
     # Get entries for this quarter
     results = qe.chain() \
-        .filter_by_topic(topic_name="Banking") \
+        .filter_by_topic(topic_name="Abu Dhabi") \
         .filter_by_date(start_date=start_date, end_date=end_date) \
         .to_dataframe()
 
@@ -504,13 +504,13 @@ if all_results:
         print(f"    {quarter}: {count}")
 
     # Export full analysis
-    combined.to_csv('banking_regulation_2024_analysis.csv', index=False)
-    print(f"\n  Full data exported to: banking_regulation_2024_analysis.csv")
+    combined.to_csv('abu_dhabi_regulation_2024_analysis.csv', index=False)
+    print(f"\n  Full data exported to: abu_dhabi_regulation_2024_analysis.csv")
 ```
 
 **Expected Output**:
 ```
-Banking Regulation Activity by Quarter (2024)
+Abu Dhabi Global Market Activity by Quarter (2024)
 
 ============================================================
 
@@ -542,7 +542,7 @@ Yearly Summary:
     Q3 2024: 198
     Q4 2024: 145
 
-  Full data exported to: banking_regulation_2024_analysis.csv
+  Full data exported to: abu_dhabi_regulation_2024_analysis.csv
 ```
 
 **Use Cases**:
@@ -566,7 +566,7 @@ import pandas as pd
 qe = create_query_engine()
 
 # Topics to compare
-topics_to_compare = ["Banking", "Healthcare", "Energy", "Technology", "Environment"]
+topics_to_compare = ["Abu Dhabi", "Healthcare", "Energy", "Technology", "Environment"]
 
 # Date range: last 6 months
 six_months_ago = datetime.now() - timedelta(days=180)
@@ -622,7 +622,7 @@ if comparison_data:
 Regulatory Activity Comparison (Last 6 Months)
 ======================================================================
 
-Banking:
+Abu Dhabi:
   Entries: 487
   Avg per day: 2.71
 
@@ -646,7 +646,7 @@ Environment:
 
 Summary Table:
         Topic  Total Entries               Date Range  Avg Entries/Day
-      Banking            487  2024-04-25 to 2024-10-24             2.71
+    Abu Dhabi            487  2024-04-25 to 2024-10-24             2.71
    Healthcare            356  2024-04-26 to 2024-10-24             1.98
        Energy            234  2024-04-27 to 2024-10-23             1.30
    Technology            189  2024-04-28 to 2024-10-22             1.05
@@ -654,7 +654,7 @@ Summary Table:
 
 
 Topics by Activity (Most Active First):
-  Banking: 487 entries (2.71 per day)
+  Abu Dhabi: 487 entries (2.71 per day)
   Environment: 412 entries (2.29 per day)
   Healthcare: 356 entries (1.98 per day)
   Energy: 234 entries (1.3 per day)
@@ -676,7 +676,7 @@ Comparison exported to: topic_comparison.csv
 ### 1. Start Broad, Then Filter
 ```python
 # Start with topic filter, then add more specific filters
-qe.filter_by_topic(topic_name="Banking") \    # Broad
+qe.filter_by_topic(topic_name="Abu Dhabi") \    # Broad
   .filter_by_date(start_date=recent_date) \   # More specific
   .search_entries("keyword")                  # Most specific
 ```
@@ -684,7 +684,7 @@ qe.filter_by_topic(topic_name="Banking") \    # Broad
 ### 2. Use `chain()` to Reset Queries
 ```python
 # First query
-results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+results1 = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
 # Reset and start new query
 results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
@@ -692,7 +692,7 @@ results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
 
 ### 3. Check Result Counts Before Processing
 ```python
-results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+results = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
 if len(results) == 0:
     print("No results found. Try broadening search.")
@@ -704,18 +704,18 @@ else:
 ### 4. Use Partial Name Matching
 ```python
 # Partial, case-insensitive match
-qe.filter_by_topic(topic_name="bank")      # Matches "Banking", "Bank Regulation", etc.
+qe.filter_by_topic(topic_name="bank")      # Matches "Abu Dhabi", "Bank Regulation", etc.
 ```
 
 ### 5. Combine AND/OR Logic Strategically
 ```python
 # Use AND (match_all=True) for precise queries
-narrow = qe.filter_by_topic(topic_name="Banking") \
+narrow = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries(["banking", "regulation", "fintech"], match_all=True,
                    search_fields=['entry_title', 'entry_description'])
 
 # Use OR (match_all=False) for broad queries
-broad = qe.filter_by_topic(topic_name="Banking") \
+broad = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries(["banking", "finance", "credit"], match_all=False,
                    search_fields=['entry_title', 'entry_description'])
 ```
@@ -723,12 +723,12 @@ broad = qe.filter_by_topic(topic_name="Banking") \
 ### 6. Specify Search Fields for Faster Queries
 ```python
 # Fast: Search in title/description (no S3 required)
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries("regulation", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
 # Slower but comprehensive: Search in full content (requires S3)
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .fetch_content() \
     .search_entries("regulation") \
     .to_dataframe()
@@ -750,7 +750,7 @@ today = datetime.now()
 
 # Get yesterday's entries (must filter by topic first)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_date(start_date=yesterday, end_date=today) \
     .filter_by_active(is_active=True) \
     .to_dataframe()
@@ -771,17 +771,17 @@ from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
-# Monitor specific keywords in Banking topic
+# Monitor specific keywords in Abu Dhabi topic
 alerts = ["cryptocurrency", "fintech", "digital assets"]
 
 for keyword in alerts:
     results = qe.chain() \
-        .filter_by_topic(topic_name="Banking") \
+        .filter_by_topic(topic_name="Abu Dhabi") \
         .search_entries(keyword, search_fields=['entry_title', 'entry_description']) \
         .to_dataframe()
 
     if len(results) > 0:
-        print(f"\nALERT: {len(results)} new mentions of '{keyword}' in Banking")
+        print(f"\nALERT: {len(results)} new mentions of '{keyword}' in Abu Dhabi")
         print(results[['topic_name', 'entry_title', 'entry_link']].head(3))
 ```
 
@@ -793,7 +793,7 @@ from carver_feeds import create_data_manager, create_query_engine
 dm = create_data_manager()
 qe = create_query_engine()
 
-topic_name = "Banking"
+topic_name = "Abu Dhabi"
 
 # 1. Get topic metadata
 topics = dm.get_topics_df()
