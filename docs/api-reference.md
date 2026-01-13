@@ -84,50 +84,7 @@ topics = client.list_topics()
 
 ---
 
-### 2. List Feeds
-
-**Endpoint**: `GET /api/v1/feeds/`
-
-**Description**: Fetch all RSS feeds. **Note**: This endpoint does NOT support filtering by topic_id at the API level.
-
-**Parameters**: None
-
-**Response**:
-```json
-[
-  {
-    "id": "feed-456",
-    "name": "SEC News Feed",
-    "url": "https://www.sec.gov/news/rss",
-    "topic": {
-      "id": "topic-123",
-      "name": "Banking Regulation"
-    },
-    "description": "Latest news from the SEC",
-    "created_at": "2024-01-15T10:30:00Z",
-    "is_active": true,
-    "color": "#FF5733",
-    "fetch_frequency_minutes": 60
-  }
-]
-```
-
-**SDK Usage**:
-```python
-# All feeds
-feeds = client.list_feeds()
-
-# To filter by topic, use the data manager which does client-side filtering
-from carver_feeds import create_data_manager
-dm = create_data_manager()
-topic_feeds = dm.get_feeds_df(topic_id="topic-123")  # Client-side filtering
-```
-
-**Note**: The response includes a nested `topic` object which the data manager flattens to `topic_id` and `topic_name` fields for easier DataFrame operations. Filtering by topic_id is handled client-side in `get_feeds_df()` since the API endpoint doesn't support this parameter.
-
----
-
-### 3. List All Entries (Paginated)
+### 2. List All Entries (Paginated)
 
 **Endpoint**: `GET /api/v1/feeds/entries/list`
 
@@ -181,55 +138,9 @@ all_entries = client.list_entries(fetch_all=True)
 active_entries = client.list_entries(is_active=True, fetch_all=True)
 ```
 
-**Important Limitation**: This endpoint does NOT include `feed_id` in the response. Use the feed-specific or topic-specific endpoints if you need feed association.
-
 ---
 
-### 4. Get Feed Entries
-
-**Endpoint**: `GET /api/v1/feeds/{feed_id}/entries`
-
-**Description**: Fetch all entries for a specific feed. This endpoint includes feed context.
-
-**Parameters**:
-- `limit` (optional): Maximum number of entries to return (default: 100, max: 100)
-
-**Response**:
-```json
-{
-  "items": [
-    {
-      "id": "entry-789",
-      "title": "SEC Proposes New Rule",
-      "link": "https://www.sec.gov/news/article-123",
-      "description": "Brief summary",
-      "published_date": "2024-10-24T08:00:00Z",
-      "created_at": "2024-10-24T09:15:00Z",
-      "is_active": true,
-      "extracted_metadata": {
-        "feed_id": "feed-456",
-        "topic_id": "topic-123",
-        "content_status": "extracted",
-        "timestamp": "2024-11-18T17:35:34.258Z",
-        "s3_content_md_path": "s3://bucket/path/content.md",
-        "s3_content_html_path": "s3://bucket/path/content.html",
-        "s3_aggregated_content_md_path": "s3://bucket/path/aggregated.md"
-      }
-    }
-  ]
-}
-```
-
-**SDK Usage**:
-```python
-feed_entries = client.get_feed_entries("feed-456", limit=100)
-```
-
-**Note**: The data manager automatically injects `feed_id` into each entry when using this endpoint, enabling proper relationship tracking. **API Limit:** Requesting `limit > 100` returns at most 100 entries. **Content (v0.2.0+):** `content_markdown` not included by default; use SDK with `fetch_content=True` to fetch from S3.
-
----
-
-### 5. Get Topic Entries
+### 3. Get Topic Entries
 
 **Endpoint**: `GET /api/v1/feeds/topics/{topic_id}/entries`
 
@@ -253,7 +164,7 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 
 **Performance**: Faster than fetching all entries and filtering, especially for large datasets.
 
-**Note**: Entries from this endpoint do NOT include `feed_id` (API limitation). **API Limit:** Requesting `limit > 100` returns at most 100 entries. **Content (v0.2.0+):** `content_markdown` not included; requires S3 fetch.
+**Note**: **API Limit:** Requesting `limit > 100` returns at most 100 entries. **Content (v0.2.0+):** `content_markdown` not included; requires S3 fetch.
 
 ---
 
@@ -276,38 +187,16 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 
 ---
 
-### Feed Schema
-
-**DataFrame Columns** (from `get_feeds_df()`):
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | str | Unique feed identifier |
-| `name` | str | Feed name |
-| `url` | str | RSS feed URL |
-| `topic_id` | str | Associated topic ID (foreign key) |
-| `topic_name` | str | Associated topic name (denormalized) |
-| `description` | str | Feed description |
-| `created_at` | datetime64 | Creation timestamp |
-| `is_active` | bool | Active status |
-
-**Extra columns**: `color`, `fetch_frequency_minutes`, `max_depth`, `tags`, and other metadata fields.
-
-**Relationships**:
-- `topic_id` → `topics.id` (one-to-one)
-
----
-
 ### Entry Schema
 
-**DataFrame Columns** (from `get_entries_df()`):
+**DataFrame Columns** (from `get_topic_entries_df()`):
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | str | Unique entry identifier |
 | `title` | str | Entry headline |
 | `link` | str | URL to original article |
-| `content_markdown` | str | Full article content in markdown (requires `fetch_content=True` in v0.2.0+) |
+| `entry_content_markdown` | str | Full article content in markdown (requires `fetch_content=True` in v0.2.0+) |
 | `description` | str | Brief summary |
 | `published_at` | datetime64 | Publication date (mapped from `published_date`) |
 | `created_at` | datetime64 | Creation timestamp in Carver system |
@@ -321,13 +210,13 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 | `s3_aggregated_content_md_path` | str | S3 path to aggregated content (from extracted_metadata) |
 
 **Important Changes in v0.2.0:**
-- `content_markdown` is **NOT** returned by the API by default
-- To fetch content, use `get_entries_df(fetch_content=True)` with AWS credentials configured
+- `entry_content_markdown` (renamed from `content_markdown`) is **NOT** returned by the API by default
+- To fetch content, use `get_topic_entries_df(fetch_content=True)` with AWS credentials configured
 - New metadata fields from `extracted_metadata` provide S3 paths and content status
 - `feed_id` and `topic_id` now available from `extracted_metadata` for all entries
 
 **Relationships**:
-- `feed_id` → `feeds.id` (many-to-one)
+- `feed_id` → Associated feed (metadata only, feed endpoints removed)
 - `topic_id` → `topics.id` (many-to-one)
 
 ---
@@ -336,26 +225,24 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 
 **DataFrame Columns** (from `get_hierarchical_view()`):
 
-Hierarchical views merge topics, feeds, and optionally entries into a single denormalized DataFrame.
+Hierarchical views merge topics and entries into a single denormalized DataFrame.
 
 **Without entries** (`include_entries=False`):
 
 | Column Prefix | Fields | Description |
 |---------------|--------|-------------|
 | `topic_*` | id, name, description, created_at, updated_at, is_active | Topic fields |
-| `feed_*` | id, name, url, description, created_at, is_active | Feed fields |
 
 **With entries** (`include_entries=True`):
 
 | Column Prefix | Fields | Description |
 |---------------|--------|-------------|
 | `topic_*` | id, name, description, created_at, updated_at, is_active | Topic fields |
-| `feed_*` | id, name, url, description, created_at, is_active | Feed fields |
-| `entry_*` | id, title, link, content_markdown, description, published_at, created_at, is_active | Entry fields |
+| `entry_*` | id, title, link, entry_content_markdown, description, published_at, created_at, is_active | Entry fields |
 
-**Example columns**: `topic_id`, `topic_name`, `feed_id`, `feed_name`, `entry_id`, `entry_title`, `entry_content_markdown`, etc.
+**Example columns**: `topic_id`, `topic_name`, `entry_id`, `entry_title`, `entry_content_markdown`, etc.
 
-**Performance Warning**: Including entries without filtering by `feed_id` creates a very large DataFrame (~10,000 rows). Always filter when possible.
+**Performance Warning**: Including entries without filtering by `topic_id` creates a very large DataFrame (~10,000 rows). Always filter by topic when possible.
 
 ---
 
@@ -387,44 +274,6 @@ Fetch all topics from the API.
 **Raises**:
 - `AuthenticationError`: Invalid API key
 - `CarverAPIError`: API request failed
-
----
-
-##### `list_feeds(topic_id: Optional[str] = None) -> List[Dict]`
-Fetch feeds, optionally filtered by topic.
-
-**Parameters**:
-- `topic_id`: Filter by topic ID (optional)
-
-**Returns**: List of feed dictionaries
-
----
-
-##### `list_entries(feed_id: Optional[str] = None, is_active: Optional[bool] = None, limit: int = 50, fetch_all: bool = False) -> List[Dict]`
-Fetch entries with automatic pagination.
-
-**Parameters**:
-- `feed_id`: Filter by feed ID (optional)
-- `is_active`: Filter by active status (optional)
-- `limit`: Entries per page (default: 50)
-- `fetch_all`: If True, fetch all pages; if False, fetch first page only (default: False)
-
-**Returns**: List of entry dictionaries
-
-**Performance**: With `fetch_all=True`, may take 30-60 seconds for ~10,000 entries.
-
----
-
-##### `get_feed_entries(feed_id: str, limit: int = 100) -> List[Dict]`
-Fetch entries for a specific feed.
-
-**Parameters**:
-- `feed_id`: Feed identifier (required)
-- `limit`: Maximum entries to return (default: 100)
-
-**Returns**: List of entry dictionaries
-
-**Note**: Data manager injects `feed_id` into each entry for relationship tracking.
 
 ---
 
@@ -489,99 +338,62 @@ print(topics_df[['id', 'name', 'is_active']].head())
 
 ---
 
-##### `get_feeds_df(topic_id: Optional[str] = None) -> pd.DataFrame`
-Fetch feeds as a pandas DataFrame, optionally filtered by topic.
+##### `get_topic_entries_df(topic_id: str, is_active: Optional[bool] = None, fetch_content: bool = False, s3_client: Optional[S3ContentClient] = None) -> pd.DataFrame`
+Fetch entries for a specific topic as a pandas DataFrame.
 
 **Parameters**:
-- `topic_id`: Filter by topic ID (optional)
-
-**Returns**: DataFrame with feed schema
-
-**Implementation Note**: The API endpoint `/api/v1/feeds/` does NOT support the `topic_id` parameter. When `topic_id` is provided, this method fetches all feeds and filters them client-side. This is acceptable since feeds metadata is relatively small (~800 feeds).
-
-**Example**:
-```python
-# All feeds
-feeds_df = dm.get_feeds_df()
-
-# Feeds for specific topic (client-side filtering)
-topic_feeds = dm.get_feeds_df(topic_id="topic-123")
-```
-
----
-
-##### `get_entries_df(feed_id: Optional[str] = None, topic_id: Optional[str] = None, is_active: Optional[bool] = None, fetch_all: bool = True, fetch_content: bool = False, s3_client: Optional[S3ContentClient] = None) -> pd.DataFrame`
-Fetch entries as a pandas DataFrame with flexible filtering.
-
-**Parameters**:
-- `feed_id`: Filter by feed ID (optional, uses optimized endpoint)
-- `topic_id`: Filter by topic ID (optional, uses optimized endpoint)
+- `topic_id`: Topic identifier (required)
 - `is_active`: Filter by active status (optional)
-- `fetch_all`: Fetch all pages vs first page only (default: True)
 - `fetch_content`: Fetch content from S3 (default: False, requires AWS credentials)
 - `s3_client`: S3 client instance (optional, auto-created if not provided)
 
 **Returns**: DataFrame with entry schema
 
 **Performance**:
-- With `feed_id` or `topic_id`: Fast, fetches only relevant entries
-- Without filters + `fetch_all=True`: Slow (~30-60s), fetches all ~10,000 entries
+- Without `fetch_content`: Fast, fetches only metadata
 - With `fetch_content=True`: Additional time for S3 fetches (~1-2s per 100 entries)
 
 **S3 Content Fetching (v0.2.0+)**:
 Content is no longer returned by the API. To fetch content from S3:
 1. Configure AWS credentials (AWS profile or direct credentials)
 2. Use `fetch_content=True` to automatically fetch from S3
-3. Content will be populated in `content_markdown` column
+3. Content will be populated in `entry_content_markdown` column
 
 **Example**:
 ```python
-# All entries without content (slow)
-all_entries = dm.get_entries_df()
-
-# Entries for specific feed (fast)
-feed_entries = dm.get_entries_df(feed_id="feed-456")
+# Entries without content (fast)
+entries = dm.get_topic_entries_df(topic_id="topic-123")
 
 # Entries with content from S3 (requires AWS credentials)
-entries_with_content = dm.get_entries_df(feed_id="feed-456", fetch_content=True)
-
-# Entries for topic (medium speed)
-topic_entries = dm.get_entries_df(topic_id="topic-123")
+entries_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 ```
 
 ---
 
-##### `get_hierarchical_view(include_entries: bool = True, feed_id: Optional[str] = None, topic_id: Optional[str] = None) -> pd.DataFrame`
-Build denormalized hierarchical view with complete metadata for all entries.
+##### `get_hierarchical_view(include_entries: bool = True, topic_id: Optional[str] = None) -> pd.DataFrame`
+Build denormalized hierarchical view combining topics and entries.
 
 **Parameters**:
 - `include_entries`: Include entry data (default: True)
-- `feed_id`: Filter to specific feed (optional, fastest)
-- `topic_id`: Filter to specific topic (optional, fetches all feeds in topic)
+- `topic_id`: Filter to specific topic (optional)
 
-**Returns**: DataFrame with hierarchical schema (topic_*, feed_*, entry_* columns)
+**Returns**: DataFrame with hierarchical schema (topic_*, entry_* columns)
 
 **Implementation Details**:
-- Fetches topic→feed hierarchy (metadata only, ~800 feeds)
-- For entries: Fetches per-feed using `get_feed_entries(feed_id)` for each feed in scope
-- Manually enriches each entry with: feed_id, feed_name, topic_id, topic_name
-- **Guarantees**: ALL entries ALWAYS have complete topic and feed metadata
-- **API Limitation Workaround**: Neither `/api/v1/feeds/{feed_id}/entries` nor `/api/v1/feeds/topics/{topic_id}/entries` returns feed_id, so we enrich manually
+- Fetches topics and optionally entries
+- Enriches each entry with topic metadata: topic_id, topic_name
+- **Guarantees**: ALL entries ALWAYS have complete topic metadata
 
 **Performance Characteristics**:
-- `feed_id` specified: 1 API call for entries (fastest)
-- `topic_id` specified with N feeds: N API calls for entries (one per feed)
-- Neither specified: Fetches entries for ALL 800+ feeds (very slow, not recommended)
+- `topic_id` specified: 1 API call for topic entries (fast)
+- No filter: Fetches entries for ALL topics (slow, not recommended)
 
 **Example**:
 ```python
-# Topic + Feed only (fast, no entries)
+# Topic only (fast, no entries)
 hierarchy = dm.get_hierarchical_view(include_entries=False)
 
-# Full hierarchy for specific feed (fast, 1 API call)
-full = dm.get_hierarchical_view(include_entries=True, feed_id="feed-456")
-
-# Full hierarchy for topic (moderate, N API calls where N = number of feeds in topic)
+# Full hierarchy for specific topic (fast, 1 API call)
 topic_full = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123")
 ```
 
@@ -728,6 +540,8 @@ results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
 ##### `search_entries(keywords: Union[str, List[str]], search_fields: List[str] = ['entry_content_markdown'], case_sensitive: bool = False, match_all: bool = False) -> EntryQueryEngine`
 Search entries by keywords across specified fields.
 
+**Prerequisites**: Must call `filter_by_topic()` before searching to load data.
+
 **Parameters**:
 - `keywords`: Single keyword or list of keywords
 - `search_fields`: Fields to search in (default: `['entry_content_markdown']`)
@@ -735,7 +549,7 @@ Search entries by keywords across specified fields.
 - `match_all`: All keywords must match (AND) vs any keyword (OR) (default: False)
 
 **Available search fields**:
-- `entry_content_markdown` (default, full article content)
+- `entry_content_markdown` (full article content, requires `fetch_content()` in v0.2.0+)
 - `entry_title` (headline)
 - `entry_link` (URL)
 - `entry_description` (summary)
@@ -744,20 +558,28 @@ Search entries by keywords across specified fields.
 
 **Example**:
 ```python
-# Search for "regulation" in content
-results = qe.search_entries("regulation").to_dataframe()
+# Search in title/description (no S3 required)
+results = qe.filter_by_topic(topic_name="Banking") \
+    .search_entries("regulation", search_fields=['entry_title', 'entry_description']) \
+    .to_dataframe()
+
+# Search in full content (requires fetch_content)
+results = qe.filter_by_topic(topic_name="Banking") \
+    .fetch_content() \
+    .search_entries("regulation") \
+    .to_dataframe()
 
 # Search for any of multiple keywords
-results = qe.search_entries(["banking", "finance"], match_all=False).to_dataframe()
+results = qe.filter_by_topic(topic_name="Banking") \
+    .search_entries(["banking", "finance"], match_all=False,
+                   search_fields=['entry_title', 'entry_description']) \
+    .to_dataframe()
 
 # Search for all keywords
-results = qe.search_entries(["banking", "regulation"], match_all=True).to_dataframe()
-
-# Search in title and content
-results = qe.search_entries(
-    "SEC",
-    search_fields=['entry_title', 'entry_content_markdown']
-).to_dataframe()
+results = qe.filter_by_topic(topic_name="Banking") \
+    .search_entries(["banking", "regulation"], match_all=True,
+                   search_fields=['entry_title', 'entry_description']) \
+    .to_dataframe()
 ```
 
 ---
@@ -778,26 +600,6 @@ results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
 
 # Filter by topic ID (exact match)
 results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
-```
-
----
-
-##### `filter_by_feed(feed_id: Optional[str] = None, feed_name: Optional[str] = None) -> EntryQueryEngine`
-Filter entries by feed.
-
-**Parameters**:
-- `feed_id`: Exact feed ID match (optional)
-- `feed_name`: Partial feed name match, case-insensitive (optional)
-
-**Returns**: Self for method chaining
-
-**Example**:
-```python
-# Filter by feed name (partial match)
-results = qe.filter_by_feed(feed_name="SEC News").to_dataframe()
-
-# Filter by feed ID (exact match)
-results = qe.filter_by_feed(feed_id="feed-456").to_dataframe()
 ```
 
 ---
@@ -932,17 +734,13 @@ topics_df = dm.get_topics_df()
 print(f"Available topics: {len(topics_df)}")
 print(topics_df[['id', 'name', 'is_active']].head(10))
 
-# List feeds for a topic
+# Get entries for a topic without content (fast, works without AWS)
 topic_id = topics_df['id'].iloc[0]
-feeds_df = dm.get_feeds_df(topic_id=topic_id)
-print(f"Feeds in topic: {len(feeds_df)}")
-
-# Get entries without content (fast, works without AWS)
-entries_df = dm.get_entries_df(topic_id=topic_id)
+entries_df = dm.get_topic_entries_df(topic_id=topic_id)
 print(f"Entries: {len(entries_df)}")
 
 # Get entries with content from S3 (requires AWS credentials)
-entries_with_content = dm.get_entries_df(topic_id=topic_id, fetch_content=True)
+entries_with_content = dm.get_topic_entries_df(topic_id=topic_id, fetch_content=True)
 print(f"Entries with content: {len(entries_with_content)}")
 ```
 
@@ -954,27 +752,28 @@ from datetime import datetime
 
 qe = create_query_engine()
 
-# Search with multiple filters
+# Search with multiple filters (in title/description, no S3 required)
 results = qe \
     .filter_by_topic(topic_name="Banking") \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .filter_by_active(is_active=True) \
-    .search_entries(["regulation", "compliance"]) \
+    .search_entries(["regulation", "compliance"],
+                   search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
 print(f"Found {len(results)} results")
-print(results[['entry_title', 'feed_name', 'entry_published_at']].head())
+print(results[['entry_title', 'topic_name', 'entry_published_at']].head())
 ```
 
-### Pattern 3: Feed-Specific Analysis
+### Pattern 3: Topic-Specific Analysis
 
 ```python
 from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
-# Get all entries from specific feed
-results = qe.filter_by_feed(feed_name="SEC News").to_dataframe()
+# Get all entries from specific topic
+results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
 
 # Analyze by date
 results['month'] = results['entry_published_at'].dt.to_period('M')
@@ -990,10 +789,10 @@ from carver_feeds import create_query_engine
 
 qe = create_query_engine()
 
-# Filter data
+# Filter data (search in title/description, no S3 required)
 results = qe \
     .filter_by_topic(topic_name="Banking") \
-    .search_entries("regulation")
+    .search_entries("regulation", search_fields=['entry_title', 'entry_description'])
 
 # Export in multiple formats
 df = results.to_dataframe()
@@ -1031,17 +830,17 @@ from carver_feeds import create_data_manager
 
 dm = create_data_manager()
 
-# Instead of loading all entries, filter by topic first
-entries = dm.get_entries_df(topic_id="topic-123")  # Fast, optimized endpoint
+# Filter by topic for optimized endpoint
+entries = dm.get_topic_entries_df(topic_id="topic-123")  # Fast, optimized endpoint
 
 # Then do analysis on filtered data
 print(f"Loaded {len(entries)} entries for topic")
 
-# Note: In v0.2.0+, content_markdown requires S3 fetch
+# Note: In v0.2.0+, entry_content_markdown requires S3 fetch
 # Use fetch_content=True to enable content search
-entries_with_content = dm.get_entries_df(topic_id="topic-123", fetch_content=True)
+entries_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 keyword_matches = entries_with_content[
-    entries_with_content['content_markdown'].str.contains("regulation", case=False, na=False)
+    entries_with_content['entry_content_markdown'].str.contains("regulation", case=False, na=False)
 ]
 print(f"Found {len(keyword_matches)} matching entries")
 ```
@@ -1055,7 +854,7 @@ dm = create_data_manager()
 s3_client = get_s3_client()
 
 # Lazy loading: Fetch metadata first, content only when needed
-entries = dm.get_entries_df(feed_id="feed-456")  # Fast, no S3 fetch
+entries = dm.get_topic_entries_df(topic_id="topic-123")  # Fast, no S3 fetch
 print(f"Found {len(entries)} entries")
 
 # Filter based on metadata (title, description, dates)
@@ -1068,11 +867,11 @@ if s3_client and len(recent_entries) > 0:
         s3_path = row['s3_content_md_path']
         if s3_path:
             content = s3_client.fetch_content(s3_path)
-            recent_entries.at[idx, 'content_markdown'] = content
+            recent_entries.at[idx, 'entry_content_markdown'] = content
     print(f"Fetched content for {len(recent_entries)} entries")
 
 # Alternative: Fetch all content upfront (easier but slower)
-all_with_content = dm.get_entries_df(feed_id="feed-456", fetch_content=True)
+all_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 ```
 
 ---
@@ -1164,20 +963,18 @@ except Exception as e:
 
 ### Optimization Strategies
 
-1. **Use Filtered Endpoints**: When possible, filter at the API level
+1. **Use Topic Filtering**: Always filter by topic for optimized endpoint
    ```python
-   # Slow: fetch all, then filter
-   all_entries = dm.get_entries_df()
-   filtered = all_entries[all_entries['feed_id'] == 'feed-456']
-
-   # Fast: filter at API
-   filtered = dm.get_entries_df(feed_id='feed-456')
+   # Optimized: filter by topic
+   filtered = dm.get_topic_entries_df(topic_id='topic-123')
    ```
 
-2. **Lazy Loading**: Query engine loads data only on first filter/search
+2. **Lazy Loading**: Query engine loads data only when filter_by_topic is called
    ```python
    qe = create_query_engine()  # Fast, no API call
-   results = qe.search_entries("regulation")  # API call happens here
+   results = qe.filter_by_topic(topic_name="Banking") \
+       .search_entries("regulation", search_fields=['entry_title']) \
+       .to_dataframe()  # API call happens on filter_by_topic
    ```
 
 3. **Reuse Query Engine**: Data is cached after first load
@@ -1191,13 +988,10 @@ except Exception as e:
    results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
    ```
 
-4. **Limit Entry Fetches**: Use `fetch_all=False` for exploration
+4. **Always Start with Topic Filter**: The query engine requires filtering by topic first
    ```python
-   # Exploration: first page only
-   sample = dm.get_entries_df(fetch_all=False)  # Fast, ~50 entries
-
-   # Production: all data
-   all_data = dm.get_entries_df(fetch_all=True)  # Slow, ~10,000 entries
+   # Required pattern
+   results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
    ```
 
 ### Memory Considerations

@@ -239,7 +239,7 @@ topic_with_content = dm.get_hierarchical_view(
 ## 📚 Documentation
 
 - **[API Reference](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/api-reference.md)**: Detailed API endpoint and module reference
-- **[Usage Examples](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)**: A collection of comprehensive examples covering common workflows
+- **[Usage Examples](https://github.com/carveragents/carver-feeds-sdk/blob/master/examples/README.md)**: A collection of comprehensive examples covering common workflows
 
 ## 📋 Requirements
 
@@ -452,7 +452,7 @@ We welcome contributions! Please follow these guidelines:
 For issues, questions, or feature requests:
 
 - **API Reference**: [docs/api-reference.md](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/api-reference.md)
-- **Examples**: [docs/examples.md](https://github.com/carveragents/carver-feeds-sdk/blob/master/docs/examples.md)
+- **Examples**: [examples/README.md](https://github.com/carveragents/carver-feeds-sdk/blob/master/examples/README.md)
 - **Issues**: [GitHub Issues](https://github.com/carveragents/carver-feeds-sdk/issues)
 
 ## 📄 License
