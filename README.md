@@ -79,9 +79,9 @@ client = get_client()
 topics = client.list_topics()
 print(f"Found {len(topics)} topics")
 
-# Fetch feeds
-feeds = client.list_feeds()
-print(f"Found {len(feeds)} feeds")
+# Fetch entries for a specific topic
+entries = client.get_topic_entries(topic_id="topic-123")
+print(f"Found {len(entries)} entries")
 ```
 
 ### 3. Using DataFrames
@@ -99,12 +99,12 @@ dm = create_data_manager()
 topics_df = dm.get_topics_df()
 print(topics_df[['id', 'name', 'is_active']].head())
 
-# Get entries for a specific feed (without content)
-entries_df = dm.get_entries_df(feed_id="feed-123")
+# Get entries for a specific topic (without content)
+entries_df = dm.get_topic_entries_df(topic_id="topic-123")
 print(f"Found {len(entries_df)} entries")
 
 # Get entries with content from S3 (requires AWS credentials)
-entries_with_content = dm.get_entries_df(feed_id="feed-123", fetch_content=True)
+entries_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 print(f"Fetched content for {len(entries_with_content)} entries")
 ```
 
@@ -141,18 +141,16 @@ qe.to_json("results.json")
 Low-level API client with comprehensive error handling:
 
 - X-API-Key authentication
-- Automatic pagination (handles ~10,000+ entries)
 - Exponential backoff retry logic for rate limits
-- Support for all API endpoints
+- Support for topics and topic-based entry retrieval
 
 ### Data Manager (`FeedsDataManager`)
 
 Converts API responses to pandas DataFrames:
 
 - JSON to DataFrame conversion with schema validation
-- Hierarchical data views (topic → feed → entry)
-- Smart endpoint selection for performance
-- Handles topics, feeds, entries
+- Hierarchical data views (topic → entry)
+- Handles topics and entries
 - S3 content fetching capability (v0.2.0+: content not returned by API by default)
 
 ### Query Engine (`EntryQueryEngine`)
@@ -160,47 +158,53 @@ Converts API responses to pandas DataFrames:
 High-level query interface with fluent API:
 
 - Method chaining for complex queries
-- Filter by topic, feed, date range, and status
+- Filter by topic, date range, and status
 - Keyword search with AND/OR logic across multiple fields
 - Multiple export formats (DataFrame, CSV, JSON, dict)
 - Lazy loading with automatic endpoint optimization
 
 ## 📊 Data Model
 
-The SDK works with three main entities in a hierarchical structure:
+The SDK works with two main entities in a hierarchical structure:
 
 ```
 Topic (regulatory bodies like SEC, SEBI, RBI, etc.)
-  ↓ 1:N
-Feed (RSS feeds for each topic)
   ↓ 1:N
 Entry (individual articles/entries)
 ```
 
 **Key Fields**:
 - **Topic**: `id`, `name`, `description`, `is_active`, timestamps
-- **Feed**: `id`, `name`, `url`, `topic_id`, `topic_name`, `is_active`, timestamps
-- **Entry**: `id`, `title`, `link`, `content_markdown` (requires S3 fetch in v0.2.0+), `description`, `published_at`, `feed_id`, `topic_id`, `content_status`, `s3_content_md_path`, `s3_content_html_path`, `is_active`, timestamps
+- **Entry**: `id`, `title`, `link`, `entry_content_markdown` (requires S3 fetch in v0.2.0+), `description`, `published_at`, `feed_id`, `topic_id`, `content_status`, `s3_content_md_path`, `s3_content_html_path`, `is_active`, timestamps
 
 ## ⚡ Advanced Features
 
 ### Keyword Search
 
 ```python
-# Single keyword (case-insensitive by default)
-qe.search_entries("regulation").to_dataframe()
+# Single keyword (case-insensitive by default, searches in title/description)
+qe.filter_by_topic(topic_name="Banking") \
+    .search_entries("regulation", search_fields=['entry_title', 'entry_description']) \
+    .to_dataframe()
 
 # Multiple keywords with OR logic (matches ANY)
-qe.search_entries(["regulation", "compliance", "enforcement"], match_all=False)
+qe.filter_by_topic(topic_name="Banking") \
+    .search_entries(["regulation", "compliance", "enforcement"], match_all=False,
+                   search_fields=['entry_title', 'entry_description'])
 
 # Multiple keywords with AND logic (matches ALL)
-qe.search_entries(["banking", "regulation"], match_all=True)
+qe.filter_by_topic(topic_name="Banking") \
+    .search_entries(["banking", "regulation"], match_all=True,
+                   search_fields=['entry_title', 'entry_description'])
+
+# Search in full content from S3 (requires fetch_content)
+qe.filter_by_topic(topic_name="Banking") \
+    .fetch_content() \
+    .search_entries("regulation")  # Searches in entry_content_markdown
 
 # Case-sensitive search
-qe.search_entries("SEC", case_sensitive=True)
-
-# Search specific fields
-qe.search_entries("fintech", search_fields=['entry_title', 'entry_description'])
+qe.filter_by_topic(topic_name="Banking") \
+    .search_entries("SEC", case_sensitive=True, search_fields=['entry_title'])
 ```
 
 **Available Search Fields**:
@@ -211,21 +215,25 @@ qe.search_entries("fintech", search_fields=['entry_title', 'entry_description'])
 
 ### Hierarchical Views
 
-Build denormalized DataFrames combining topic, feed, and entry data:
+Build denormalized DataFrames combining topic and entry data:
 
 ```python
 from carver_feeds import create_data_manager
 
 dm = create_data_manager()
 
-# Topic + Feed hierarchy (fast, no entries)
-hierarchy = dm.get_hierarchical_view(include_entries=False)
+# Topic metadata only (fast, no entries)
+topic_only = dm.get_hierarchical_view(topic_id="topic-123", include_entries=False)
 
-# Full hierarchy for a specific feed
-full = dm.get_hierarchical_view(include_entries=True, feed_id="feed-456")
+# Full hierarchy for a topic (topic + entries)
+topic_data = dm.get_hierarchical_view(topic_id="topic-123", include_entries=True)
 
-# Full hierarchy for a topic (all feeds + entries)
-topic_data = dm.get_hierarchical_view(include_entries=True, topic_id="topic-123")
+# With S3 content fetching
+topic_with_content = dm.get_hierarchical_view(
+    topic_id="topic-123",
+    include_entries=True,
+    fetch_content=True
+)
 ```
 
 ## 📚 Documentation
@@ -331,12 +339,10 @@ The query engine automatically uses optimized endpoints when you filter before l
 qe = create_query_engine()
 results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
 
-# Optimal: Query engine uses get_feed_entries() endpoint
-results = qe.filter_by_feed(feed_name="SEC News").to_dataframe()
-
-# Less optimal: Loads all ~10,000 entries, then filters
-results = qe.to_dataframe()  # Loads everything first
-filtered = results[results['topic_name'].str.contains("Banking")]
+# Required pattern: Always start with filter_by_topic()
+results = qe.filter_by_topic(topic_name="Banking") \
+    .filter_by_date(start_date=datetime(2024, 1, 1)) \
+    .to_dataframe()
 ```
 
 ### 2. Chain Filters Efficiently
@@ -373,7 +379,7 @@ For simple filtering without complex logic, use the Data Manager directly:
 ```python
 # Faster for simple use cases
 dm = create_data_manager()
-entries = dm.get_entries_df(feed_id='feed-456')  # Direct endpoint call
+entries = dm.get_topic_entries_df(topic_id='topic-123')  # Direct endpoint call
 ```
 
 ## ⚠️ Error Handling

@@ -15,7 +15,7 @@ Basic Usage:
     >>> # Method 2: Using the data manager for DataFrames
     >>> dm = create_data_manager()
     >>> topics_df = dm.get_topics_df()
-    >>> entries_df = dm.get_entries_df(feed_id="feed-123")
+    >>> entries_df = dm.get_topic_entries_df(topic_id="topic-123")
     >>>
     >>> # Method 3: Using the query engine for advanced queries
     >>> qe = create_query_engine()

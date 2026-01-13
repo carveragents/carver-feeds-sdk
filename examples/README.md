@@ -40,7 +40,7 @@ python basic_usage.py
 Features:
 - Direct API client usage
 - DataFrame operations
-- Fetching topics, feeds, and entries
+- Fetching topics and entries
 - **NEW in v0.2.0**: S3 content fetching
 
 ### Advanced Queries

@@ -2,7 +2,7 @@
 Basic Usage Example
 
 This example demonstrates basic usage of the Carver Feeds SDK:
-- Fetching topics, feeds, and entries
+- Fetching topics and entries
 - Working with DataFrames
 - Simple filtering
 
@@ -24,13 +24,6 @@ def main():
     for topic in topics[:3]:  # Show first 3
         print(f"  - {topic['name']}: {topic.get('description', 'N/A')}")
 
-    # Fetch feeds
-    feeds = client.list_feeds()
-    print(f"\nFound {len(feeds)} feeds")
-    for feed in feeds[:3]:  # Show first 3
-        topic_name = feed.get('topic', {}).get('name', 'Unknown')
-        print(f"  - {feed['name']} (Topic: {topic_name})")
-
     print("\n" + "="*60 + "\n")
 
     # Example 2: Using the data manager for DataFrames
@@ -43,19 +36,14 @@ def main():
     print("\nFirst 3 topics:")
     print(topics_df[['id', 'name', 'is_active']].head(3))
 
-    # Get feeds as DataFrame
-    feeds_df = dm.get_feeds_df()
-    print(f"\nFeeds DataFrame shape: {feeds_df.shape}")
-    print("\nFirst 3 feeds:")
-    print(feeds_df[['id', 'name', 'topic_name', 'is_active']].head(3))
+    # Get entries for a specific topic
+    if len(topics_df) > 0:
+        topic_num = 1
+        first_topic_id = topics_df['id'].iloc[topic_num]
+        first_topic_name = topics_df['name'].iloc[topic_num]
 
-    # Get entries for a specific feed
-    if len(feeds_df) > 0:
-        first_feed_id = feeds_df['id'].iloc[0]
-        first_feed_name = feeds_df['name'].iloc[0]
-
-        entries_df = dm.get_entries_df(feed_id=first_feed_id)
-        print(f"\nEntries for feed '{first_feed_name}':")
+        entries_df = dm.get_topic_entries_df(topic_id=first_topic_id)
+        print(f"\nEntries for topic '{first_topic_name}':")
         print(f"  Total entries: {len(entries_df)}")
         if len(entries_df) > 0:
             print("\nFirst 3 entries:")
@@ -63,17 +51,17 @@ def main():
 
     print("\n" + "="*60 + "\n")
 
-    # Example 3: NEW in v0.2.0 - Fetching content from S3
+    # Example 3: Fetching content from S3
     print("=== Example 3: Fetch Content from S3 (v0.2.0+) ===")
     print("Note: Requires AWS_PROFILE_NAME configured in .env")
 
-    if len(feeds_df) > 0:
-        first_feed_id = feeds_df['id'].iloc[0]
+    if len(topics_df) > 0:
+        first_topic_id = topics_df['id'].iloc[topic_num]
 
         # Fetch entries WITH content from S3
-        entries_with_content = dm.get_entries_df(
-            feed_id=first_feed_id,
-            fetch_content=True  # NEW: Fetch content from S3
+        entries_with_content = dm.get_topic_entries_df(
+            topic_id=first_topic_id,
+            fetch_content=True  # Fetch content from S3
         )
 
         print(f"\nEntries with S3 content:")
@@ -81,16 +69,16 @@ def main():
 
         if len(entries_with_content) > 0:
             # Check how many have content
-            has_content = entries_with_content['content_markdown'].notna().sum()
+            has_content = entries_with_content['entry_content_markdown'].notna().sum()
             print(f"  Entries with content: {has_content}/{len(entries_with_content)}")
 
             # Show first entry with content
             for idx, row in entries_with_content.iterrows():
-                if row.get('content_markdown'):
+                if row.get('entry_content_markdown'):
                     print(f"\nFirst entry with content:")
                     print(f"  Title: {row['title']}")
-                    print(f"  Content length: {len(row['content_markdown'])} characters")
-                    print(f"  Content preview: {row['content_markdown'][:150]}...")
+                    print(f"  Content length: {len(row['entry_content_markdown'])} characters")
+                    print(f"  Content preview: {row['entry_content_markdown'][:500]}...")
                     break
         else:
             print("\n  Tip: Set AWS_PROFILE_NAME in .env to fetch content from S3")
