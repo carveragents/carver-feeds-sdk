@@ -168,6 +168,64 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 
 ---
 
+### 4. Get User Topic Subscriptions
+
+**Endpoint**: `GET /api/v1/core/users/{user_id}/topics/subscriptions`
+
+**Description**: Fetch the list of topics that a specific user has subscribed to.
+
+**Parameters**:
+- `user_id` (required, path parameter): User identifier
+
+**Response**:
+```json
+{
+  "subscriptions": [
+    {
+      "id": "topic-123",
+      "name": "Abu Dhabi Global Market",
+      "description": "A financial free zone in Abu Dhabi...",
+      "base_domain": null
+    },
+    {
+      "id": "topic-456",
+      "name": "Reserve Bank of India",
+      "description": "India's central banking institution...",
+      "base_domain": "rbi.org.in"
+    }
+  ],
+  "total_count": 2
+}
+```
+
+**SDK Usage**:
+```python
+from carver_feeds import get_client, create_data_manager
+
+# Via API client (raw response)
+client = get_client()
+response = client.get_user_topic_subscriptions("user-123")
+print(f"User has {response['total_count']} subscriptions")
+for topic in response['subscriptions']:
+    print(f"- {topic['name']}")
+
+# Via data manager (DataFrame)
+dm = create_data_manager()
+subscriptions_df = dm.get_user_topic_subscriptions_df("user-123")
+print(subscriptions_df[['id', 'name', 'description']])
+```
+
+**Response Fields**:
+- `subscriptions`: List of topic objects (id, name, description, base_domain)
+- `total_count`: Total number of subscriptions
+
+**Use Cases**:
+- Display user's subscribed topics in UI
+- Filter content based on user preferences
+- Track user interests for analytics
+
+---
+
 ## Data Schemas
 
 ### Topic Schema
@@ -290,6 +348,34 @@ Fetch entries for all feeds in a topic.
 
 ---
 
+##### `get_user_topic_subscriptions(user_id: str) -> Dict[str, Any]`
+Fetch topic subscriptions for a specific user.
+
+**Parameters**:
+- `user_id`: User identifier (required)
+
+**Returns**: Dictionary with:
+- `subscriptions`: List of topic dictionaries
+- `total_count`: Total number of subscriptions
+
+**Raises**:
+- `ValueError`: If `user_id` is not provided
+- `AuthenticationError`: Invalid API key
+- `CarverAPIError`: API request failed or response validation failed
+
+**Example**:
+```python
+from carver_feeds import get_client
+
+client = get_client()
+result = client.get_user_topic_subscriptions("user-123")
+print(f"User has {result['total_count']} subscriptions")
+for topic in result['subscriptions']:
+    print(f"- {topic['name']}")
+```
+
+---
+
 #### `get_client() -> CarverFeedsAPIClient`
 Factory function to create client from environment variables.
 
@@ -367,6 +453,41 @@ entries = dm.get_topic_entries_df(topic_id="topic-123")
 # Entries with content from S3 (requires AWS credentials)
 entries_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 ```
+
+---
+
+##### `get_user_topic_subscriptions_df(user_id: str) -> pd.DataFrame`
+Fetch user topic subscriptions as a pandas DataFrame.
+
+**Parameters**:
+- `user_id`: User identifier (required)
+
+**Returns**: DataFrame with columns:
+- `id`: Topic ID
+- `name`: Topic name
+- `description`: Topic description
+- `base_domain`: Base domain (may be null)
+
+**Raises**:
+- `ValueError`: If `user_id` is not provided
+- `CarverAPIError`: If API request fails
+
+**Use Cases**:
+- Display user's subscribed topics
+- Filter content based on user preferences
+- Track user interests for analytics
+
+**Example**:
+```python
+from carver_feeds import create_data_manager
+
+dm = create_data_manager()
+subscriptions = dm.get_user_topic_subscriptions_df("user-123")
+print(f"User has {len(subscriptions)} subscriptions")
+print(subscriptions[['id', 'name']].head())
+```
+
+**Note**: The API response includes a `total_count` field which is not included in the DataFrame. Use the raw API method `get_user_topic_subscriptions()` if you need this value.
 
 ---
 
