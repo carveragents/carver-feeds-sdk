@@ -36,32 +36,6 @@ class TestFeedsDataManager:
         assert "id" in result.columns
         assert "name" in result.columns
 
-    def test_get_feeds_df_returns_dataframe(self, mock_api_client, sample_feeds):
-        """Test that get_feeds_df returns a DataFrame."""
-        mock_api_client.list_feeds.return_value = sample_feeds
-        dm = FeedsDataManager(mock_api_client)
-
-        result = dm.get_feeds_df()
-
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 2
-        assert "id" in result.columns
-        assert "name" in result.columns
-        assert "topic_id" in result.columns
-
-    def test_get_feeds_df_flattens_topic_object(self, mock_api_client, sample_feeds):
-        """Test that get_feeds_df properly flattens nested topic object."""
-        mock_api_client.list_feeds.return_value = sample_feeds
-        dm = FeedsDataManager(mock_api_client)
-
-        result = dm.get_feeds_df()
-
-        assert "topic_id" in result.columns
-        assert "topic_name" in result.columns
-        assert result["topic_id"].iloc[0] == "topic-1"
-        assert result["topic_name"].iloc[0] == "Banking"
-
-
 class TestCreateDataManager:
     """Tests for create_data_manager factory function."""
 
@@ -76,44 +50,44 @@ class TestCreateDataManager:
         mock_get_client.assert_called_once()
 
 
-class TestGetEntriesDF:
-    """Tests for get_entries_df method."""
+class TestGetTopicEntriesDF:
+    """Tests for get_topic_entries_df method."""
 
-    def test_get_entries_df_without_fetch_content(self, mock_api_client, sample_entries):
-        """Test get_entries_df without fetching content from S3."""
-        mock_api_client.list_entries.return_value = sample_entries
+    def test_get_topic_entries_df_without_fetch_content(self, mock_api_client, sample_entries):
+        """Test get_topic_entries_df without fetching content from S3."""
+        mock_api_client.get_topic_entries.return_value = sample_entries
         dm = FeedsDataManager(mock_api_client)
 
-        result = dm.get_entries_df(fetch_all=True, fetch_content=False)
+        result = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=False)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2
         assert "id" in result.columns
         assert "title" in result.columns
-        assert "content_markdown" in result.columns
+        assert "entry_content_markdown" in result.columns
         # Content should be None when not fetched
-        assert result["content_markdown"].isna().all()
+        assert result["entry_content_markdown"].isna().all()
 
     @patch("carver_feeds.data_manager.get_s3_client")
-    def test_get_entries_df_with_fetch_content_no_s3_client(
+    def test_get_topic_entries_df_with_fetch_content_no_s3_client(
         self, mock_get_s3_client, mock_api_client, sample_entries
     ):
-        """Test get_entries_df with fetch_content=True but no S3 client available."""
-        mock_api_client.list_entries.return_value = sample_entries
+        """Test get_topic_entries_df with fetch_content=True but no S3 client available."""
+        mock_api_client.get_topic_entries.return_value = sample_entries
         mock_get_s3_client.return_value = None  # Simulate no S3 credentials
 
         dm = FeedsDataManager(mock_api_client)
-        result = dm.get_entries_df(fetch_all=True, fetch_content=True)
+        result = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 
         assert isinstance(result, pd.DataFrame)
         # Content should be None when S3 client unavailable
-        assert result["content_markdown"].isna().all()
+        assert result["entry_content_markdown"].isna().all()
 
     @patch("carver_feeds.data_manager.get_s3_client")
-    def test_get_entries_df_with_fetch_content_success(
+    def test_get_topic_entries_df_with_fetch_content_success(
         self, mock_get_s3_client, mock_api_client
     ):
-        """Test get_entries_df with successful S3 content fetch."""
+        """Test get_topic_entries_df with successful S3 content fetch."""
         # Sample entries with S3 paths in extracted_metadata
         entries_with_s3 = [
             {
@@ -135,7 +109,7 @@ class TestGetEntriesDF:
             }
         ]
 
-        mock_api_client.list_entries.return_value = entries_with_s3
+        mock_api_client.get_topic_entries.return_value = entries_with_s3
 
         # Mock S3 client
         mock_s3 = Mock()
@@ -145,15 +119,15 @@ class TestGetEntriesDF:
         mock_get_s3_client.return_value = mock_s3
 
         dm = FeedsDataManager(mock_api_client)
-        result = dm.get_entries_df(fetch_all=True, fetch_content=True)
+        result = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 1
-        assert result["content_markdown"].iloc[0] == "# Content from S3"
+        assert result["entry_content_markdown"].iloc[0] == "# Content from S3"
         mock_s3.fetch_content_batch.assert_called_once()
 
-    def test_get_entries_df_with_explicit_s3_client(self, mock_api_client):
-        """Test get_entries_df with explicitly provided S3 client."""
+    def test_get_topic_entries_df_with_explicit_s3_client(self, mock_api_client):
+        """Test get_topic_entries_df with explicitly provided S3 client."""
         entries_with_s3 = [
             {
                 "id": "entry-1",
@@ -169,7 +143,7 @@ class TestGetEntriesDF:
             }
         ]
 
-        mock_api_client.list_entries.return_value = entries_with_s3
+        mock_api_client.get_topic_entries.return_value = entries_with_s3
 
         # Explicit S3 client
         mock_s3 = Mock()
@@ -178,9 +152,9 @@ class TestGetEntriesDF:
         }
 
         dm = FeedsDataManager(mock_api_client)
-        result = dm.get_entries_df(fetch_all=True, fetch_content=True, s3_client=mock_s3)
+        result = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True, s3_client=mock_s3)
 
-        assert result["content_markdown"].iloc[0] == "Explicit S3 content"
+        assert result["entry_content_markdown"].iloc[0] == "Explicit S3 content"
         mock_s3.fetch_content_batch.assert_called_once()
 
 
@@ -206,9 +180,9 @@ class TestFetchContentsFromS3:
         dm = FeedsDataManager(mock_api_client)
         result = dm.fetch_contents_from_s3(df, mock_s3)
 
-        assert "content_markdown" in result.columns
-        assert result["content_markdown"].iloc[0] == "Content 1"
-        assert result["content_markdown"].iloc[1] == "Content 2"
+        assert "entry_content_markdown" in result.columns
+        assert result["entry_content_markdown"].iloc[0] == "Content 1"
+        assert result["entry_content_markdown"].iloc[1] == "Content 2"
 
     def test_fetch_contents_from_s3_no_s3_paths(self, mock_api_client):
         """Test fetch_contents_from_s3 when no S3 paths are present."""
@@ -218,8 +192,8 @@ class TestFetchContentsFromS3:
         dm = FeedsDataManager(mock_api_client)
         result = dm.fetch_contents_from_s3(df, mock_s3)
 
-        assert "content_markdown" in result.columns
-        assert result["content_markdown"].isna().all()
+        assert "entry_content_markdown" in result.columns
+        assert result["entry_content_markdown"].isna().all()
         mock_s3.fetch_content_batch.assert_not_called()
 
     def test_fetch_contents_from_s3_empty_paths(self, mock_api_client):
@@ -232,8 +206,8 @@ class TestFetchContentsFromS3:
         dm = FeedsDataManager(mock_api_client)
         result = dm.fetch_contents_from_s3(df, mock_s3)
 
-        assert "content_markdown" in result.columns
-        assert result["content_markdown"].isna().all()
+        assert "entry_content_markdown" in result.columns
+        assert result["entry_content_markdown"].isna().all()
         mock_s3.fetch_content_batch.assert_not_called()
 
     def test_fetch_contents_from_s3_partial_success(self, mock_api_client):
@@ -254,8 +228,8 @@ class TestFetchContentsFromS3:
         dm = FeedsDataManager(mock_api_client)
         result = dm.fetch_contents_from_s3(df, mock_s3)
 
-        assert result["content_markdown"].iloc[0] == "Content"
-        assert pd.isna(result["content_markdown"].iloc[1])
+        assert result["entry_content_markdown"].iloc[0] == "Content"
+        assert pd.isna(result["entry_content_markdown"].iloc[1])
 
 
 class TestHandleS3Fetch:
@@ -268,8 +242,8 @@ class TestHandleS3Fetch:
 
         result = dm._handle_s3_fetch(df, s3_client=None, fetch_content=False)
 
-        assert "content_markdown" in result.columns
-        assert result["content_markdown"].isna().all()
+        assert "entry_content_markdown" in result.columns
+        assert result["entry_content_markdown"].isna().all()
 
     @patch("carver_feeds.data_manager.get_s3_client")
     def test_handle_s3_fetch_creates_client_from_env(
@@ -286,7 +260,7 @@ class TestHandleS3Fetch:
         result = dm._handle_s3_fetch(df, s3_client=None, fetch_content=True)
 
         mock_get_s3_client.assert_called_once()
-        assert result["content_markdown"].iloc[0] == "Content"
+        assert result["entry_content_markdown"].iloc[0] == "Content"
 
     def test_handle_s3_fetch_uses_provided_client(self, mock_api_client):
         """Test _handle_s3_fetch uses explicitly provided S3 client."""
@@ -298,7 +272,7 @@ class TestHandleS3Fetch:
         dm = FeedsDataManager(mock_api_client)
         result = dm._handle_s3_fetch(df, s3_client=mock_s3, fetch_content=True)
 
-        assert result["content_markdown"].iloc[0] == "Content"
+        assert result["entry_content_markdown"].iloc[0] == "Content"
 
 
 class TestExtractMetadataFields:

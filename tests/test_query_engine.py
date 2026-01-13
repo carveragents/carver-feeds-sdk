@@ -66,7 +66,7 @@ class TestFetchContentMethod:
                 "entry_id": ["entry-1", "entry-2"],
                 "entry_title": ["Entry 1", "Entry 2"],
                 "s3_content_md_path": ["s3://bucket/file1.md", "s3://bucket/file2.md"],
-                "content_markdown": [None, None],
+                "entry_content_markdown": [None, None],
             }
         )
         mock_dm.get_hierarchical_view.return_value = sample_df
@@ -79,13 +79,15 @@ class TestFetchContentMethod:
         mock_data_manager.fetch_contents_from_s3.return_value = pd.DataFrame(
             {
                 "id": ["entry-1"],
-                "content_markdown": ["Content from S3"],
+                "entry_content_markdown": ["Content from S3"],
             }
         )
 
         qe = EntryQueryEngine(mock_data_manager)
-        # Load initial data first
-        qe.to_dataframe()
+        # Simulate data already loaded (as if filter_by_topic was called)
+        qe._initial_data_loaded = True
+        qe._results = pd.DataFrame({"id": ["entry-1"], "entry_content_markdown": [None]})
+
         # Now fetch content
         result = qe.fetch_content(s3_client=mock_s3)
 
@@ -98,11 +100,14 @@ class TestFetchContentMethod:
         mock_s3 = Mock()
         mock_get_s3_client.return_value = mock_s3
         mock_data_manager.fetch_contents_from_s3.return_value = pd.DataFrame(
-            {"id": ["entry-1"], "content_markdown": ["Content"]}
+            {"id": ["entry-1"], "entry_content_markdown": ["Content"]}
         )
 
         qe = EntryQueryEngine(mock_data_manager)
-        qe.to_dataframe()
+        # Simulate data already loaded (as if filter_by_topic was called)
+        qe._initial_data_loaded = True
+        qe._results = pd.DataFrame({"id": ["entry-1"], "entry_content_markdown": [None]})
+
         result = qe.fetch_content()
 
         assert isinstance(result, EntryQueryEngine)
@@ -118,7 +123,9 @@ class TestFetchContentMethod:
         mock_get_s3_client.return_value = None
 
         qe = EntryQueryEngine(mock_data_manager)
-        qe.to_dataframe()
+        # Simulate data already loaded (as if filter_by_topic was called)
+        qe._initial_data_loaded = True
+        qe._results = pd.DataFrame({"id": ["entry-1"], "entry_content_markdown": [None]})
 
         # Should not raise error, just log warning
         result = qe.fetch_content()
@@ -127,29 +134,17 @@ class TestFetchContentMethod:
         mock_data_manager.fetch_contents_from_s3.assert_not_called()
 
     def test_fetch_content_before_loading_data(self):
-        """Test fetch_content works even before explicit data loading."""
-        # The fetch_content method actually calls _ensure_data_loaded internally,
-        # so it doesn't raise an error. It loads data first, then fetches content.
+        """Test fetch_content raises error when called without filter_by_topic first."""
         mock_dm = Mock(spec=FeedsDataManager)
-        sample_df = pd.DataFrame(
-            {
-                "entry_id": ["entry-1"],
-                "s3_content_md_path": ["s3://bucket/file1.md"],
-                "content_markdown": [None],
-            }
-        )
-        mock_dm.get_hierarchical_view.return_value = sample_df
-        mock_dm.fetch_contents_from_s3.return_value = sample_df
-
         mock_s3 = Mock()
         qe = EntryQueryEngine(mock_dm)
 
-        # Should load data automatically and fetch content
-        result = qe.fetch_content(s3_client=mock_s3)
+        # Should raise ValueError telling user to call filter_by_topic first
+        with pytest.raises(ValueError, match="You must call filter_by_topic\\(\\) first"):
+            qe.fetch_content(s3_client=mock_s3)
 
-        assert isinstance(result, EntryQueryEngine)
-        mock_dm.get_hierarchical_view.assert_called_once()
-        mock_dm.fetch_contents_from_s3.assert_called_once()
+        # Should not have attempted to fetch from S3
+        mock_dm.fetch_contents_from_s3.assert_not_called()
 
 
 class TestQueryEngineWithS3:
@@ -179,12 +174,16 @@ class TestQueryEngineWithS3:
         """Test that lazy loading passes fetch_content parameter to data_manager."""
         mock_s3 = Mock()
         sample_df = pd.DataFrame(
-            {"entry_id": ["entry-1"], "entry_content_markdown": ["Content"]}
+            {"entry_id": ["entry-1"], "entry_entry_content_markdown": ["Content"], "topic_id": ["topic-1"]}
         )
         mock_data_manager.get_hierarchical_view.return_value = sample_df
+        mock_data_manager.get_topics_df.return_value = pd.DataFrame(
+            {"id": ["topic-1"], "name": ["Banking"]}
+        )
 
         qe = EntryQueryEngine(mock_data_manager, fetch_content=True, s3_client=mock_s3)
-        qe.to_dataframe()
+        # Must call filter_by_topic first
+        qe.filter_by_topic(topic_id="topic-1").to_dataframe()
 
         # Verify get_hierarchical_view was called with fetch_content and s3_client params
         mock_data_manager.get_hierarchical_view.assert_called_once()

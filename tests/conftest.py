@@ -69,7 +69,7 @@ def sample_feeds() -> List[Dict]:
 
 @pytest.fixture
 def sample_entries() -> List[Dict]:
-    """Sample entry data for testing."""
+    """Sample entry data for testing (mimics API response format)."""
     return [
         {
             "id": "entry-1",

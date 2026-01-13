@@ -40,8 +40,7 @@ class EntryQueryEngine:
 
     Features:
     - Keyword search across multiple fields (title, description, content_markdown)
-    - Filter by topic (id or name)
-    - Filter by feed (id or name)
+    - Filter by topic (id or name) - required as first filter
     - Filter by date range
     - Filter by active status
     - Method chaining for complex queries
@@ -93,18 +92,15 @@ class EntryQueryEngine:
         """
         Ensure data is loaded before applying filters.
 
-        This lazy-loads the hierarchical view on first use to avoid
-        unnecessary API calls during initialization.
+        Since the simplified API requires topic_id, users must call
+        filter_by_topic() first. This method checks if data has been loaded
+        and raises a clear error if not.
         """
         if not self._initial_data_loaded:
-            logger.info("Loading hierarchical data for query engine...")
-            self._results = self.data_manager.get_hierarchical_view(
-                include_entries=True,
-                fetch_content=self._fetch_content_on_load,
-                s3_client=self.s3_client,
+            raise ValueError(
+                "No data loaded. You must call filter_by_topic() first to specify which topic to query. "
+                "Example: qe.filter_by_topic(topic_name='Banking').to_dataframe()"
             )
-            self._initial_data_loaded = True
-            logger.info(f"Loaded {len(self._results)} entries for querying")
 
     def chain(self) -> "EntryQueryEngine":
         """
@@ -121,7 +117,7 @@ class EntryQueryEngine:
             >>> # First query
             >>> results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
             >>> # Reset and start new query
-            >>> results2 = qe.chain().filter_by_feed(feed_name="SEC").to_dataframe()
+            >>> results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
         """
         logger.info("Resetting query chain to full dataset")
         self._initial_data_loaded = False
@@ -372,130 +368,6 @@ class EntryQueryEngine:
         logger.info(f"Filter returned {len(self._results)} entries")
         return self
 
-    def filter_by_feed(
-        self, feed_id: str | None = None, feed_name: str | None = None
-    ) -> "EntryQueryEngine":
-        """
-        Filter entries by feed (id or name).
-
-        At least one of feed_id or feed_name must be provided.
-        If both are provided, feed_id takes precedence.
-
-        OPTIMIZED: When feed_id OR feed_name is provided and no data is loaded yet,
-        this method uses the feed-specific endpoint to fetch only that feed's entries,
-        avoiding the need to download all entries. For feed_name, it first resolves
-        the name to feed_id(s) then fetches entries efficiently.
-
-        Args:
-            feed_id: Feed ID to filter by
-            feed_name: Feed name to filter by (case-insensitive partial match)
-
-        Returns:
-            EntryQueryEngine: Self for method chaining
-
-        Example:
-            >>> qe = create_query_engine()
-            >>> # Filter by feed ID (optimized - only fetches this feed's entries)
-            >>> results = qe.filter_by_feed(feed_id="feed-456").to_dataframe()
-            >>> # Filter by feed name (optimized - resolves name to ID first)
-            >>> results = qe.filter_by_feed(feed_name="SEC News").to_dataframe()
-        """
-        if not feed_id and not feed_name:
-            logger.warning("Neither feed_id nor feed_name provided, no filtering applied")
-            return self
-
-        # OPTIMIZATION: If data not yet loaded, use feed-specific endpoint
-        if not self._initial_data_loaded:
-            if feed_id:
-                # Direct feed_id lookup
-                logger.info(f"Optimized filter: Loading only feed {feed_id} entries")
-                self._results = self.data_manager.get_hierarchical_view(
-                    include_entries=True,
-                    feed_id=feed_id,
-                    fetch_content=self._fetch_content_on_load,
-                    s3_client=self.s3_client,
-                )
-                self._initial_data_loaded = True
-                logger.info(f"Loaded {len(self._results)} entries for feed {feed_id}")
-                return self
-            elif feed_name:
-                # Resolve feed_name to feed_id(s) first, then fetch entries
-                logger.info(f"Optimized filter: Looking up feed_id for feed_name '{feed_name}'")
-                feeds_df = self.data_manager.get_feeds_df()
-
-                # Find matching feeds (case-insensitive partial match)
-                mask = feeds_df["name"].fillna("").str.contains(feed_name, case=False, na=False)
-                matching_feeds = feeds_df[mask]
-
-                if len(matching_feeds) == 0:
-                    logger.warning(f"No feeds found matching '{feed_name}'")
-                    self._results = pd.DataFrame()
-                    self._initial_data_loaded = True
-                    return self
-
-                # If single match, use optimized endpoint
-                if len(matching_feeds) == 1:
-                    resolved_feed_id = matching_feeds.iloc[0]["id"]
-                    feed_display_name = matching_feeds.iloc[0]["name"]
-                    logger.info(
-                        f"Found single matching feed '{feed_display_name}' ({resolved_feed_id})"
-                    )
-                    self._results = self.data_manager.get_hierarchical_view(
-                        include_entries=True,
-                        feed_id=resolved_feed_id,
-                        fetch_content=self._fetch_content_on_load,
-                        s3_client=self.s3_client,
-                    )
-                    self._initial_data_loaded = True
-                    logger.info(f"Loaded {len(self._results)} entries for feed {resolved_feed_id}")
-                    return self
-                else:
-                    # Multiple matches - fetch entries for each feed and combine
-                    logger.info(
-                        f"Found {len(matching_feeds)} matching feeds, fetching entries for all"
-                    )
-                    all_entries = []
-                    for _, feed in matching_feeds.iterrows():
-                        feed_entries = self.data_manager.get_hierarchical_view(
-                            include_entries=True,
-                            feed_id=feed["id"],
-                            fetch_content=self._fetch_content_on_load,
-                            s3_client=self.s3_client,
-                        )
-                        all_entries.append(feed_entries)
-
-                    if all_entries:
-                        self._results = pd.concat(all_entries, ignore_index=True)
-                    else:
-                        self._results = pd.DataFrame()
-
-                    self._initial_data_loaded = True
-                    logger.info(
-                        f"Loaded {len(self._results)} entries across {len(matching_feeds)} feeds"
-                    )
-                    return self
-
-        # Standard path: filter from already-loaded data
-        self._ensure_data_loaded()
-
-        if feed_id:
-            logger.info(f"Filtering by feed_id: {feed_id}")
-            self._results = self._results[self._results["feed_id"] == feed_id]
-        elif feed_name:
-            logger.info(f"Filtering by feed_name: {feed_name}")
-            if "feed_name" in self._results.columns:
-                mask = (
-                    self._results["feed_name"]
-                    .fillna("")
-                    .str.contains(feed_name, case=False, na=False)
-                )
-                self._results = self._results[mask]
-            else:
-                logger.warning("feed_name column not found in data")
-
-        logger.info(f"Filter returned {len(self._results)} entries")
-        return self
-
     def filter_by_date(
         self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> "EntryQueryEngine":
@@ -644,7 +516,7 @@ class EntryQueryEngine:
         Example:
             >>> qe = create_query_engine()
             >>> df = qe.filter_by_topic(topic_name="Banking").to_dataframe()
-            >>> print(df[['topic_name', 'feed_name', 'entry_title']].head())
+            >>> print(df[['topic_name', 'entry_title']].head())
         """
         self._ensure_data_loaded()
         logger.info(f"Returning {len(self._results)} entries as DataFrame")
