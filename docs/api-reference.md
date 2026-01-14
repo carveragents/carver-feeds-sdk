@@ -226,6 +226,118 @@ print(subscriptions_df[['id', 'name', 'description']])
 
 ---
 
+### 5. Get Annotations
+
+**Endpoint**: `GET /api/v1/core/annotations`
+
+**Description**: Retrieve annotations filtered by specific criteria. Annotations provide AI-generated insights, classifications, and summaries for feed entries.
+
+**Query Parameters** (exactly one required):
+- `feed_entry_ids_in` (string, CSV): Comma-separated list of Feed Entry UUIDs
+- `topic_ids_in` (string, CSV): Comma-separated list of Topic UUIDs
+- `user_ids_in` (string, CSV): Comma-separated list of User UUIDs
+
+**Priority Order**: If multiple filters are provided (not recommended), the API uses this priority:
+1. `feed_entry_ids_in` (highest priority)
+2. `topic_ids_in`
+3. `user_ids_in` (lowest priority)
+
+**Response**:
+```json
+[
+  {
+    "annotation": {
+      "scores": {
+        "relevance": 0.95,
+        "importance": 0.87,
+        "confidence": 0.92
+      },
+      "classification": {
+        "category": "regulatory_update",
+        "subcategory": "compliance",
+        "tags": ["banking", "aml", "kyc"]
+      },
+      "summary": "New AML regulations require enhanced KYC procedures..."
+    },
+    "feed_entry_id": "entry-uuid-123",
+    "topic_id": "topic-uuid-456",
+    "user_id": "user-uuid-789"
+  }
+]
+```
+
+**SDK Usage**:
+```python
+from carver_feeds import get_client
+
+client = get_client()
+
+# Filter by feed entry IDs
+annotations = client.get_annotations(
+    feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
+)
+
+# Filter by topic IDs
+annotations = client.get_annotations(
+    topic_ids=["topic-uuid-1"]
+)
+
+# Filter by user IDs
+annotations = client.get_annotations(
+    user_ids=["user-uuid-1", "user-uuid-2"]
+)
+
+# Process annotations
+for ann in annotations:
+    print(f"Entry: {ann['feed_entry_id']}")
+    print(f"Summary: {ann['annotation']['summary']}")
+    print(f"Relevance: {ann['annotation']['scores']['relevance']:.2f}")
+```
+
+**Response Fields**:
+- `annotation`: Dict containing AI-generated insights
+  - `scores`: Dict with relevance, importance, confidence scores (0.0-1.0)
+  - `classification`: Dict with category, subcategory, and tags
+  - `summary`: Text summary of the entry
+- `feed_entry_id`: UUID of the annotated feed entry
+- `topic_id`: UUID of the topic (present when filtered by topic/user)
+- `user_id`: UUID of the user (present when filtered by user)
+
+**Important Notes**:
+- Only one filter type can be used per request
+- Empty filter lists will raise a `ValueError`
+- SDK validates that exactly one filter is provided
+- Returns empty list if no annotations match the filter
+
+**Use Cases**:
+- Retrieve AI insights for specific entries
+- Analyze all annotations for a topic
+- Get user-specific annotation data
+- Filter entries by relevance/importance scores
+- Build custom analytics dashboards
+- Generate reports based on classifications
+
+**Example - Advanced Usage**:
+```python
+# Get annotations and filter by score threshold
+annotations = client.get_annotations(topic_ids=["topic-123"])
+
+high_importance = [
+    ann for ann in annotations
+    if ann['annotation']['scores']['importance'] > 0.8
+]
+
+# Analyze tags
+from collections import Counter
+all_tags = []
+for ann in annotations:
+    all_tags.extend(ann['annotation']['classification'].get('tags', []))
+tag_counts = Counter(all_tags)
+print(f"Most common tags: {tag_counts.most_common(5)}")
+```
+
+---
+
 ## Data Schemas
 
 ### Topic Schema
@@ -304,6 +416,181 @@ Hierarchical views merge topics and entries into a single denormalized DataFrame
 
 ---
 
+### Annotation Schema
+
+**Response Structure** (from `get_annotations()`):
+
+Annotations are returned as a list of dictionaries with the following structure:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `annotation` | dict | AI-generated insights for the entry |
+| `feed_entry_id` | str | UUID of the annotated feed entry |
+| `topic_id` | str/null | UUID of the topic (present when filtered by topic/user) |
+| `user_id` | str/null | UUID of the user (present when filtered by user) |
+
+**Annotation Object Structure**:
+
+#### Scores
+Each score is an object with label, score value, and confidence:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `annotation.scores.impact` | dict | Impact assessment |
+| `annotation.scores.impact.label` | str | Label: "low", "medium", "high" |
+| `annotation.scores.impact.score` | int | Numeric score (0-10) |
+| `annotation.scores.impact.confidence` | float | Confidence level (0.0-1.0) |
+| `annotation.scores.urgency` | dict | Urgency assessment |
+| `annotation.scores.urgency.label` | str | Label: "low", "medium", "high" |
+| `annotation.scores.urgency.score` | int | Numeric score (0-10) |
+| `annotation.scores.urgency.confidence` | float | Confidence level (0.0-1.0) |
+| `annotation.scores.relevance` | dict | Relevance assessment |
+| `annotation.scores.relevance.label` | str | Label: "low", "medium", "high" |
+| `annotation.scores.relevance.score` | float | Numeric score (0.0-10.0) |
+| `annotation.scores.relevance.confidence` | float | Confidence level (0.0-1.0) |
+
+#### Classification
+| Field | Type | Description |
+|-------|------|-------------|
+| `annotation.classification.update_type` | str | Type of update (e.g., "trend report", "policy change") |
+| `annotation.classification.regulatory_source` | dict | Source information |
+| `annotation.classification.regulatory_source.name` | str | Source organization name |
+| `annotation.classification.regulatory_source.division_office` | str | Division/office within org |
+| `annotation.classification.metadata` | dict | Document metadata (title, language, etc.) |
+
+#### Metadata
+Rich metadata providing detailed insights:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `annotation.metadata.tags` | list[str] | Topic tags (e.g., ["Abu Dhabi", "GDP Growth", "Banking"]) |
+| `annotation.metadata.impact_summary` | dict | Detailed impact analysis |
+| `annotation.metadata.impact_summary.objective` | str | Primary objective of the document |
+| `annotation.metadata.impact_summary.why_it_matters` | str | Explanation of significance |
+| `annotation.metadata.impact_summary.what_changed` | str | Summary of changes |
+| `annotation.metadata.impact_summary.risk_impact` | str | Risk implications |
+| `annotation.metadata.impact_summary.key_requirements` | list[str] | Key requirements or actions |
+| `annotation.metadata.impacted_business` | dict | Business impact details |
+| `annotation.metadata.impacted_business.industry` | list[str] | Affected industries |
+| `annotation.metadata.impacted_business.jurisdiction` | list[str] | Affected jurisdictions |
+| `annotation.metadata.impacted_business.type` | list[str] | Business types affected |
+| `annotation.metadata.impacted_functions` | list[str] | Impacted business functions |
+| `annotation.metadata.critical_dates` | dict | Important dates (effective, compliance, etc.) |
+| `annotation.metadata.actionables` | dict | Required actions by category |
+
+**Example Annotation Object**:
+```python
+{
+    "annotation": {
+        "scores": {
+            "impact": {
+                "label": "medium",
+                "score": 4,
+                "confidence": 0.9
+            },
+            "urgency": {
+                "label": "low",
+                "score": 0,
+                "confidence": 1.0
+            },
+            "relevance": {
+                "label": "low",
+                "score": 2.0,
+                "confidence": 0.95
+            }
+        },
+        "classification": {
+            "update_type": "trend report",
+            "regulatory_source": {
+                "name": "Abu Dhabi Department of Economic Development",
+                "division_office": "Economic Strategy Sector"
+            },
+            "metadata": {
+                "title": "ABU DHABI Q4 2022 ECONOMIC UPDATE",
+                "language": ["English"]
+            }
+        },
+        "metadata": {
+            "tags": [
+                "Abu Dhabi", "Economic Update", "Q4 2022", "GDP Growth",
+                "Inflation", "Oil Market", "Banking Indicators"
+            ],
+            "impact_summary": {
+                "objective": "To provide an economic update for Abu Dhabi and the GCC region...",
+                "why_it_matters": "The update informs stakeholders about economic conditions...",
+                "what_changed": "The document reports on economic growth rates...",
+                "risk_impact": "The economic slowdown presents risks...",
+                "key_requirements": []
+            },
+            "impacted_business": {
+                "industry": ["Economic development", "Manufacturing", "Oil and gas", "Banking"],
+                "jurisdiction": ["Abu Dhabi", "GCC region"],
+                "type": ["Public sector", "Private sector"]
+            },
+            "impacted_functions": [
+                "Economic Strategy", "Risk Management", "Compliance"
+            ]
+        },
+        "entry_id": "04cd53c3-b84c-4f0d-bd22-011ec8174c4d",
+        "reconciled_published_date": {
+            "date": "2026-01-13",
+            "valid": true,
+            "source": "API"
+        }
+    },
+    "feed_entry_id": "1885f505-d2c1-429e-9039-69865c5bd2a8",
+    "topic_id": null,
+    "user_id": null
+}
+```
+
+**Working with Annotations**:
+- Annotations are returned as raw Python dictionaries (not DataFrames)
+- Use pandas for advanced analysis: `pd.json_normalize(annotations)`
+- Scores are objects with `label`, `score`, and `confidence` fields
+- Access impact summary: `ann['annotation']['metadata']['impact_summary']['objective']`
+
+**Common Patterns**:
+```python
+import pandas as pd
+from collections import Counter
+
+annotations = client.get_annotations(topic_ids=["topic-123"])
+
+# Extract impact scores
+for ann in annotations:
+    impact = ann['annotation']['scores']['impact']
+    print(f"Impact: {impact['label']} (score: {impact['score']}, confidence: {impact['confidence']})")
+
+# Filter by high impact
+high_impact = [
+    a for a in annotations
+    if a['annotation']['scores']['impact']['score'] > 5
+]
+
+# Analyze update types
+df = pd.json_normalize(annotations)
+print(df['annotation.classification.update_type'].value_counts())
+
+# Aggregate tags across all annotations
+all_tags = []
+for ann in annotations:
+    tags = ann['annotation']['metadata'].get('tags', [])
+    all_tags.extend(tags)
+tag_counts = Counter(all_tags)
+print(tag_counts.most_common(10))
+
+# Analyze impacted industries
+industries = []
+for ann in annotations:
+    industries.extend(
+        ann['annotation']['metadata']['impacted_business'].get('industry', [])
+    )
+industry_counts = Counter(industries)
+```
+
+---
+
 ## Module API Reference
 
 ### carver_feeds.carver_api
@@ -372,6 +659,55 @@ result = client.get_user_topic_subscriptions("user-123")
 print(f"User has {result['total_count']} subscriptions")
 for topic in result['subscriptions']:
     print(f"- {topic['name']}")
+```
+
+---
+
+##### `get_annotations(feed_entry_ids=None, topic_ids=None, user_ids=None) -> List[Dict[str, Any]]`
+Retrieve annotations filtered by specific criteria.
+
+**Parameters** (exactly one required):
+- `feed_entry_ids`: List of Feed Entry UUIDs (optional)
+- `topic_ids`: List of Topic UUIDs (optional)
+- `user_ids`: List of User UUIDs (optional)
+
+**Returns**: List of annotation dictionaries (see Annotation Schema)
+
+**Raises**:
+- `ValueError`: If no filter provided, multiple filters provided, or empty filter list
+- `AuthenticationError`: Invalid API key
+- `CarverAPIError`: API request failed or response validation failed
+
+**Important**: Only one filter type can be used per request. The SDK validates this constraint.
+
+**Examples**:
+```python
+from carver_feeds import get_client
+
+client = get_client()
+
+# Filter by feed entry IDs
+annotations = client.get_annotations(
+    feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
+)
+
+# Filter by topic IDs
+annotations = client.get_annotations(topic_ids=["topic-uuid-1"])
+
+# Filter by user IDs
+annotations = client.get_annotations(user_ids=["user-uuid-1"])
+
+# Process results
+for ann in annotations:
+    print(f"Entry: {ann['feed_entry_id']}")
+    print(f"Summary: {ann['annotation']['summary']}")
+    print(f"Relevance: {ann['annotation']['scores']['relevance']:.2f}")
+
+# Filter by importance score
+high_importance = [
+    a for a in annotations
+    if a['annotation']['scores']['importance'] > 0.8
+]
 ```
 
 ---

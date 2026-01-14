@@ -310,8 +310,104 @@ class CarverFeedsAPIClient:
             )
 
         if "subscriptions" not in response:
+            raise CarverAPIError("Response missing 'subscriptions' field. " f"Response: {response}")
+
+        return response
+
+    def get_annotations(
+        self,
+        feed_entry_ids: list[str] | None = None,
+        topic_ids: list[str] | None = None,
+        user_ids: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Retrieve annotations filtered by specific criteria.
+
+        Fetches annotations from /api/v1/core/annotations with filtering options.
+        Only one filter should be used per request, following priority order:
+        feed_entry_ids > topic_ids > user_ids.
+
+        Args:
+            feed_entry_ids: List of Feed Entry UUIDs to filter by (optional)
+            topic_ids: List of Topic UUIDs to filter by (optional)
+            user_ids: List of User UUIDs to filter by (optional)
+
+        Returns:
+            List of annotation dictionaries, each containing:
+            - annotation: Dict with scores, classification, and summary
+            - feed_entry_id: UUID string of the feed entry
+            - topic_id: UUID string of the topic (present if filtered by topic/user)
+            - user_id: UUID string of the user (present if filtered by user)
+
+        Raises:
+            ValueError: If no filter is provided or multiple filters are provided
+            AuthenticationError: If authentication fails
+            CarverAPIError: For other API errors
+
+        Example:
+            Filter by feed entry IDs:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> annotations = client.get_annotations(
+            ...     feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
+            ... )
+            >>> print(f"Found {len(annotations)} annotations")
+
+            Filter by topic IDs:
+            >>> annotations = client.get_annotations(topic_ids=["topic-uuid-1"])
+            >>> for ann in annotations:
+            ...     print(f"Entry: {ann['feed_entry_id']}")
+            ...     print(f"Summary: {ann['annotation']['summary']}")
+
+            Filter by user IDs:
+            >>> annotations = client.get_annotations(user_ids=["user-uuid-1"])
+        """
+        # Validate that exactly one filter is provided
+        filters_provided = sum(
+            [
+                feed_entry_ids is not None,
+                topic_ids is not None,
+                user_ids is not None,
+            ]
+        )
+
+        if filters_provided == 0:
+            raise ValueError(
+                "At least one filter must be provided: feed_entry_ids, topic_ids, or user_ids"
+            )
+
+        if filters_provided > 1:
+            raise ValueError(
+                "Only one filter can be used per request. "
+                "Provide either feed_entry_ids, topic_ids, or user_ids, not multiple."
+            )
+
+        # Build query parameters based on priority order
+        params: dict[str, str] = {}
+
+        if feed_entry_ids is not None:
+            if not feed_entry_ids:
+                raise ValueError("feed_entry_ids cannot be an empty list")
+            params["feed_entry_ids_in"] = ",".join(feed_entry_ids)
+            filter_desc = f"{len(feed_entry_ids)} feed entry ID(s)"
+        elif topic_ids is not None:
+            if not topic_ids:
+                raise ValueError("topic_ids cannot be an empty list")
+            params["topic_ids_in"] = ",".join(topic_ids)
+            filter_desc = f"{len(topic_ids)} topic ID(s)"
+        elif user_ids is not None:
+            if not user_ids:
+                raise ValueError("user_ids cannot be an empty list")
+            params["user_ids_in"] = ",".join(user_ids)
+            filter_desc = f"{len(user_ids)} user ID(s)"
+
+        logger.info(f"Fetching annotations filtered by {filter_desc}...")
+        response = self._make_request("GET", "/api/v1/core/annotations", params)
+
+        # Validate response is a list
+        if not isinstance(response, list):
             raise CarverAPIError(
-                "Response missing 'subscriptions' field. " f"Response: {response}"
+                f"Unexpected response format. Expected list, got {type(response).__name__}"
             )
 
         return response

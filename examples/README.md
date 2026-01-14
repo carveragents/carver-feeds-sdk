@@ -104,6 +104,22 @@ Features:
 
 **Note**: Replace `your-user-id-here` in the script with a valid user ID from your Carver system.
 
+### Annotations
+
+Demonstrates working with entry annotations:
+
+```bash
+python annotations.py
+```
+
+Features:
+- Fetching annotations by feed entry IDs, topic IDs, or user IDs
+- Working with annotation scores (relevance, importance, confidence)
+- Extracting classifications (categories, subcategories, tags)
+- Filtering and sorting by annotation scores
+- Tag frequency analysis
+- Advanced analytics on enriched annotation data
+
 ---
 
 # Comprehensive Usage Examples

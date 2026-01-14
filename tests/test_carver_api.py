@@ -4,14 +4,15 @@ Tests for carver_api module.
 This module tests the CarverFeedsAPIClient class and related functionality.
 """
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+
 from carver_feeds.carver_api import (
+    AuthenticationError,
+    CarverAPIError,
     CarverFeedsAPIClient,
     get_client,
-    CarverAPIError,
-    AuthenticationError,
-    RateLimitError,
 )
 
 
@@ -86,7 +87,9 @@ class TestGetUserTopicSubscriptions:
             client.get_user_topic_subscriptions(user_id="")
 
     @patch.object(CarverFeedsAPIClient, "_make_request")
-    def test_get_user_topic_subscriptions_success(self, mock_make_request, sample_user_subscriptions):
+    def test_get_user_topic_subscriptions_success(
+        self, mock_make_request, sample_user_subscriptions
+    ):
         """Test successful user topic subscriptions retrieval."""
         mock_make_request.return_value = sample_user_subscriptions
 
@@ -136,6 +139,151 @@ class TestGetUserTopicSubscriptions:
 
         assert result["subscriptions"] == []
         assert result["total_count"] == 0
+
+
+class TestGetAnnotations:
+    """Tests for get_annotations method."""
+
+    def test_get_annotations_requires_at_least_one_filter(self):
+        """Test that get_annotations requires at least one filter parameter."""
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(ValueError, match="At least one filter must be provided"):
+            client.get_annotations()
+
+    def test_get_annotations_rejects_multiple_filters(self):
+        """Test that get_annotations rejects multiple filter parameters."""
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(ValueError, match="Only one filter can be used per request"):
+            client.get_annotations(feed_entry_ids=["entry-1"], topic_ids=["topic-1"])
+
+        with pytest.raises(ValueError, match="Only one filter can be used per request"):
+            client.get_annotations(topic_ids=["topic-1"], user_ids=["user-1"])
+
+        with pytest.raises(ValueError, match="Only one filter can be used per request"):
+            client.get_annotations(feed_entry_ids=["entry-1"], user_ids=["user-1"])
+
+        with pytest.raises(ValueError, match="Only one filter can be used per request"):
+            client.get_annotations(
+                feed_entry_ids=["entry-1"],
+                topic_ids=["topic-1"],
+                user_ids=["user-1"],
+            )
+
+    def test_get_annotations_rejects_empty_lists(self):
+        """Test that get_annotations rejects empty filter lists."""
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(ValueError, match="feed_entry_ids cannot be an empty list"):
+            client.get_annotations(feed_entry_ids=[])
+
+        with pytest.raises(ValueError, match="topic_ids cannot be an empty list"):
+            client.get_annotations(topic_ids=[])
+
+        with pytest.raises(ValueError, match="user_ids cannot be an empty list"):
+            client.get_annotations(user_ids=[])
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_annotations_by_feed_entry_ids(self, mock_make_request, sample_annotations):
+        """Test successful annotations retrieval by feed entry IDs."""
+        mock_make_request.return_value = sample_annotations
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.get_annotations(feed_entry_ids=["entry-1", "entry-2"])
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["feed_entry_id"] == "entry-1"
+        assert "annotation" in result[0]
+
+        # Verify the correct endpoint and parameters were used
+        mock_make_request.assert_called_once_with(
+            "GET",
+            "/api/v1/core/annotations",
+            {"feed_entry_ids_in": "entry-1,entry-2"},
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_annotations_by_topic_ids(self, mock_make_request, sample_annotations):
+        """Test successful annotations retrieval by topic IDs."""
+        mock_make_request.return_value = sample_annotations
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.get_annotations(topic_ids=["topic-1"])
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+        # Verify the correct endpoint and parameters were used
+        mock_make_request.assert_called_once_with(
+            "GET", "/api/v1/core/annotations", {"topic_ids_in": "topic-1"}
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_annotations_by_user_ids(self, mock_make_request, sample_annotations):
+        """Test successful annotations retrieval by user IDs."""
+        mock_make_request.return_value = sample_annotations
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.get_annotations(user_ids=["user-1", "user-2"])
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+        # Verify the correct endpoint and parameters were used
+        mock_make_request.assert_called_once_with(
+            "GET",
+            "/api/v1/core/annotations",
+            {"user_ids_in": "user-1,user-2"},
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_annotations_validates_response_is_list(self, mock_make_request):
+        """Test that get_annotations validates response is a list."""
+        # Test with non-list response
+        mock_make_request.return_value = {"error": "invalid"}
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        with pytest.raises(CarverAPIError, match="Unexpected response format"):
+            client.get_annotations(feed_entry_ids=["entry-1"])
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_annotations_empty_result(self, mock_make_request):
+        """Test get_annotations with empty result list."""
+        mock_make_request.return_value = []
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.get_annotations(feed_entry_ids=["nonexistent-entry"])
+
+        assert result == []
+        assert isinstance(result, list)
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_get_annotations_single_id(self, mock_make_request):
+        """Test get_annotations with single ID in each filter type."""
+        mock_make_request.return_value = []
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+
+        # Test single feed_entry_id
+        client.get_annotations(feed_entry_ids=["entry-1"])
+        mock_make_request.assert_called_with(
+            "GET", "/api/v1/core/annotations", {"feed_entry_ids_in": "entry-1"}
+        )
+
+        # Test single topic_id
+        client.get_annotations(topic_ids=["topic-1"])
+        mock_make_request.assert_called_with(
+            "GET", "/api/v1/core/annotations", {"topic_ids_in": "topic-1"}
+        )
+
+        # Test single user_id
+        client.get_annotations(user_ids=["user-1"])
+        mock_make_request.assert_called_with(
+            "GET", "/api/v1/core/annotations", {"user_ids_in": "user-1"}
+        )
 
 
 # Additional tests can be added here for:

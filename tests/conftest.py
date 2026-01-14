@@ -4,9 +4,10 @@ Pytest configuration and fixtures for carver_feeds tests.
 This module provides common fixtures and test data for the test suite.
 """
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from typing import Dict, List
-from unittest.mock import Mock, MagicMock
+
 from carver_feeds import CarverFeedsAPIClient
 
 
@@ -20,7 +21,7 @@ def mock_api_client():
 
 
 @pytest.fixture
-def sample_topics() -> List[Dict]:
+def sample_topics() -> list[dict]:
     """Sample topic data for testing."""
     return [
         {
@@ -43,7 +44,7 @@ def sample_topics() -> List[Dict]:
 
 
 @pytest.fixture
-def sample_feeds() -> List[Dict]:
+def sample_feeds() -> list[dict]:
     """Sample feed data for testing."""
     return [
         {
@@ -68,7 +69,7 @@ def sample_feeds() -> List[Dict]:
 
 
 @pytest.fixture
-def sample_entries() -> List[Dict]:
+def sample_entries() -> list[dict]:
     """Sample entry data for testing (mimics API response format)."""
     return [
         {
@@ -93,7 +94,7 @@ def sample_entries() -> List[Dict]:
 
 
 @pytest.fixture
-def sample_user_subscriptions() -> Dict:
+def sample_user_subscriptions() -> dict:
     """Sample user topic subscription data for testing (mimics API response format)."""
     return {
         "subscriptions": [
@@ -112,6 +113,93 @@ def sample_user_subscriptions() -> Dict:
         ],
         "total_count": 2,
     }
+
+
+@pytest.fixture
+def sample_annotations() -> list[dict]:
+    """Sample annotation data for testing (mimics actual API response format)."""
+    return [
+        {
+            "annotation": {
+                "scores": {
+                    "impact": {"label": "medium", "score": 7, "confidence": 0.9},
+                    "urgency": {"label": "low", "score": 1, "confidence": 0.95},
+                    "relevance": {"label": "medium", "score": 4.0, "confidence": 0.92},
+                },
+                "classification": {
+                    "update_type": "regulatory_update",
+                    "regulatory_source": {
+                        "name": "Banking Regulatory Authority",
+                        "division_office": "Compliance Division",
+                    },
+                    "metadata": {
+                        "title": "New AML Regulations",
+                        "language": ["English"],
+                    },
+                },
+                "metadata": {
+                    "tags": ["banking", "aml", "kyc", "compliance"],
+                    "impact_summary": {
+                        "objective": "Implement enhanced KYC procedures for banking institutions",
+                        "why_it_matters": "Strengthens AML compliance framework",
+                        "what_changed": "New requirements for customer verification",
+                        "risk_impact": "Non-compliance may result in penalties",
+                        "key_requirements": ["Enhanced due diligence", "Ongoing monitoring"],
+                    },
+                    "impacted_business": {
+                        "industry": ["Banking", "Financial Services"],
+                        "jurisdiction": ["Federal"],
+                        "type": ["Banks", "Credit Unions"],
+                    },
+                    "impacted_functions": ["Compliance", "Risk Management", "Operations"],
+                },
+                "entry_id": "entry-1",
+            },
+            "feed_entry_id": "entry-1",
+            "topic_id": "topic-1",
+            "user_id": "user-1",
+        },
+        {
+            "annotation": {
+                "scores": {
+                    "impact": {"label": "low", "score": 3, "confidence": 0.85},
+                    "urgency": {"label": "low", "score": 0, "confidence": 0.9},
+                    "relevance": {"label": "low", "score": 2.5, "confidence": 0.88},
+                },
+                "classification": {
+                    "update_type": "guidance",
+                    "regulatory_source": {
+                        "name": "Health & Human Services",
+                        "division_office": "Office of Civil Rights",
+                    },
+                    "metadata": {
+                        "title": "HIPAA EHR Compliance Guidance",
+                        "language": ["English"],
+                    },
+                },
+                "metadata": {
+                    "tags": ["healthcare", "privacy", "hipaa", "ehr"],
+                    "impact_summary": {
+                        "objective": "Clarify HIPAA requirements for electronic health records",
+                        "why_it_matters": "Ensures patient data privacy and security",
+                        "what_changed": "Updated guidance on data encryption and access controls",
+                        "risk_impact": "Data breaches may lead to regulatory action",
+                        "key_requirements": ["Data encryption", "Access logging"],
+                    },
+                    "impacted_business": {
+                        "industry": ["Healthcare", "Medical Technology"],
+                        "jurisdiction": ["Federal"],
+                        "type": ["Hospitals", "Clinics", "Healthcare Providers"],
+                    },
+                    "impacted_functions": ["IT Security", "Compliance", "Healthcare Operations"],
+                },
+                "entry_id": "entry-2",
+            },
+            "feed_entry_id": "entry-2",
+            "topic_id": "topic-2",
+            "user_id": "user-1",
+        },
+    ]
 
 
 @pytest.fixture
