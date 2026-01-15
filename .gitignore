@@ -26,10 +26,7 @@ wheels/
 .env.local
 
 # IDE
-docs/README.md
-docs/LESSONS.md
-CLAUDE.md
-.claude/
+.claude/settings.local.json
 .vscode/
 .idea/
 *.swp
