@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-01-15
+
+### Added
+- **Comprehensive Technical Documentation** (`docs/technical-details.md`)
+  - Complete developer guide covering setup, architecture, testing, and workflows
+  - Performance optimization strategies and guidelines
+  - Error handling patterns and retry logic documentation
+  - Code style guidelines and conventions
+  - Package structure and organization details
+  - Publishing workflow and release checklist
+  - Common gotchas and solutions with examples
+  - Dependency management guidelines
+  - 800+ lines of detailed technical reference
+
+- **Documentation Index** (`docs/README.md`)
+  - Structured documentation organization by audience (developers, users, troubleshooting)
+  - Cross-references to all documentation resources
+  - Clear navigation paths for different use cases
+  - Contributing guidelines for documentation updates
+
+- **Development Tooling** (`.claude/`)
+  - Session tracking for development progress visibility
+  - Custom agent configurations for specialized Python assistance
+  - Historical session files for context preservation
+
+- **FLUX Framework Integration**
+  - Added reference to FLUX framework compatibility in CLAUDE.md
+  - Indicates project designed for FLUX workflow integration
+
+### Changed
+- **CLAUDE.md Restructured**
+  - Reduced from 280+ lines to ~150 lines of focused quick-reference content
+  - Now serves as pointer to comprehensive documentation files
+  - Maintains only essential quick-reference information for Claude Code
+  - All technical details moved to proper documentation locations
+
+- **Documentation Organization**
+  - Consolidated redundant S3 documentation files into unified technical reference
+  - Removed `docs/s3-content/ARCHITECTURE_DIAGRAM.md` (1,396 lines)
+  - Removed `docs/s3-content/IMPLEMENTATION_PLAN.md` (429 lines)
+  - Removed `docs/s3-content/QUICK_REFERENCE.md` (465 lines)
+  - Content consolidated into `docs/technical-details.md` and existing API reference
+
+- **.gitignore Updates**
+  - Now tracks CLAUDE.md, docs/README.md, docs/LESSONS.md
+  - Only ignores `.claude/settings.local.json` (not entire .claude/ directory)
+  - Enables version control of documentation and development workflow files
+
+- **Bumpversion Configuration**
+  - Removed reference to non-existent `docs/examples.md`
+  - Fixed version string synchronization across files
+
+### Documentation
+- **Enhanced Developer Experience**
+  - Single source of truth for technical details in version-controlled documentation
+  - Improved discoverability with clear documentation structure
+  - Better organized by audience and use case
+  - Easier maintenance with consolidated content
+
+- **Updated Cross-References**
+  - All documentation files now properly reference technical-details.md
+  - Performance optimization guidance centralized
+  - Troubleshooting paths clearly documented
+
+### Notes
+This release focuses on documentation improvements and developer experience enhancements. No SDK code changes or API modifications. All functionality from v0.2.0 remains unchanged.
+
 ## [0.2.0] - 2025-11-19
 
 ### Added
@@ -162,6 +229,8 @@ For better performance, use lazy loading:
 - Quick start guide
 - Troubleshooting tips
 
+[0.3.0]: https://github.com/carveragents/carver-feeds-sdk/releases/tag/v0.3.0
+[0.2.0]: https://github.com/carveragents/carver-feeds-sdk/releases/tag/v0.2.0
 [0.1.2]: https://github.com/carveragents/carver-feeds-sdk/releases/tag/v0.1.2
 [0.1.1]: https://github.com/carveragents/carver-feeds-sdk/releases/tag/v0.1.1
 [0.1.0]: https://github.com/carveragents/carver-feeds-sdk/releases/tag/v0.1.0
