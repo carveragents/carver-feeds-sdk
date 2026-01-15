@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **NEVER** update this file during a working session. Use `docs/LESSONS.md` to track project learnings and `docs/TECHNICAL_DETAILS.md` for development documentation.
 
+<!-- This repo is designed to be used with the FLUX framework: https://github.com/carveragents/flux -->
+
 ---
 
 ## Project Overview
