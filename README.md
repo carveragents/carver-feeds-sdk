@@ -9,6 +9,7 @@ A Python SDK for the Carver Feeds API, enabling seamless access to regulatory fe
 ## 🎯 Features
 
 - **Comprehensive API Client**: Full support for public Carver Feeds API endpoints with authentication, retry logic, and error handling
+- **AI-Powered Annotations**: Access AI-generated insights, classifications, relevance scores, and impact assessments for regulatory entries
 - **DataFrame Integration**: Convert API responses to pandas DataFrames for easy data analysis
 - **Advanced Query Engine**: Fluent API with method chaining for building complex queries
 - **Optimized Performance**: Smart endpoint selection and caching for efficient data access
@@ -128,6 +129,7 @@ Low-level API client with comprehensive error handling:
 - X-API-Key authentication
 - Exponential backoff retry logic for rate limits
 - Support for topics and topic-based entry retrieval
+- AI-generated annotations retrieval with filtering by entries, topics, or users
 
 ### Data Manager (`FeedsDataManager`)
 
@@ -150,17 +152,20 @@ High-level query interface with fluent API:
 
 ## 📊 Data Model
 
-The SDK works with two main entities in a hierarchical structure:
+The SDK works with three main entities in a hierarchical structure:
 
 ```
 Topic (regulatory bodies like SEC, SEBI, RBI, etc.)
   ↓ 1:N
 Entry (individual articles/entries)
+  ↓ 1:1
+Annotation (AI-generated insights and classifications)
 ```
 
 **Key Fields**:
 - **Topic**: `id`, `name`, `description`, `is_active`, timestamps
 - **Entry**: `id`, `title`, `link`, `entry_content_markdown`, `description`, `published_at`, `feed_id`, `topic_id`, `content_status`, `s3_content_md_path`, `s3_content_html_path`, `is_active`, timestamps
+- **Annotation**: `scores` (impact, urgency, relevance), `classification` (update_type, regulatory_source), `metadata` (tags, impact_summary, impacted_business, critical_dates)
 
 ## ⚡ Advanced Features
 
@@ -197,6 +202,47 @@ qe.filter_by_topic(topic_name="Abu Dhabi") \
 - `entry_title` (headline)
 - `entry_description` (brief summary)
 - `entry_link` (URL)
+
+### Annotations & AI Insights
+
+Access AI-generated insights, classifications, and impact assessments for regulatory entries:
+
+```python
+from carver_feeds import get_client
+
+client = get_client()
+
+# Get annotations for specific entries
+annotations = client.get_annotations(
+    feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
+)
+
+# Get annotations for a topic
+topic_annotations = client.get_annotations(topic_ids=["topic-uuid-1"])
+
+# Get annotations for a user's subscriptions
+user_annotations = client.get_annotations(user_ids=["user-uuid-1"])
+
+# Process annotation insights
+for ann in annotations:
+    scores = ann['annotation']['scores']
+    print(f"Entry: {ann['feed_entry_id']}")
+    print(f"Impact: {scores['impact']['label']} (score: {scores['impact']['score']})")
+    print(f"Urgency: {scores['urgency']['label']}")
+    print(f"Relevance: {scores['relevance']['score']}")
+
+    # Access rich metadata
+    metadata = ann['annotation']['metadata']
+    print(f"Tags: {metadata['tags']}")
+    print(f"Impacted Industries: {metadata['impacted_business']['industry']}")
+
+# Filter by high impact
+high_impact = [
+    a for a in annotations
+    if a['annotation']['scores']['impact']['score'] > 5
+]
+print(f"Found {len(high_impact)} high-impact entries")
+```
 
 ### Hierarchical Views
 
