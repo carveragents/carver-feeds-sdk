@@ -4,7 +4,7 @@ layout: home
 title: ""
 ---------
 
-# Carver Feeds
+## Carver Feeds
 
 Carver Feeds is a real-time regulatory intelligence feed service from Carver Agents. It provides continuously updated regulatory entries (announcements, rules, consultations, enforcement actions, guidance, and more) organized by **topics** (regulatory bodies / sources), so teams can monitor changes, run analysis, and power downstream workflows.
 
