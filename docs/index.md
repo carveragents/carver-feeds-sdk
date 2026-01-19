@@ -9,7 +9,7 @@ title: ""
 [![Python Support](https://img.shields.io/pypi/pyversions/carver-feeds-sdk.svg)](https://pypi.org/project/carver-feeds-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Carver Feeds is a real-time regulatory intelligence feed service from Carver Agents. It provides continuously updated regulatory entries (announcements, rules, consultations, enforcement actions, guidance, and more) organized by **topics** (regulatory bodies / sources), so teams can monitor changes, run analysis, and power downstream workflows.
+Carver Feeds is a real-time regulatory intelligence feed service from Carver Agents. It provides continuously updated regulatory entries (announcements, rules, consultations, enforcement actions, guidance, and more) organized by regulatory bodies, so teams can monitor changes, run analysis, and power downstream workflows.
 
 If you’re looking for the SDK reference and code samples, start here:
 
@@ -27,14 +27,15 @@ If you’re looking for the SDK reference and code samples, start here:
 
 ---
 
-## How the platform is structured
+## How the data is structured
 
-Carver Feeds is organized into two core objects:
+Carver Feeds data is organized into three core objects:
 
-* **Topics**: sources or groupings (e.g., a regulator, authority, court, exchange)
-* **Entries**: individual items published under a topic (title, link, metadata, optional full content)
-
-This hierarchy makes it easy to pull everything for a specific topic, filter by date, and then run analytics over the resulting set.
+* **Topics**: sources or regulatory bodies (e.g., a regulator, authority, court)
+* **Entries**: individual regulatory updates published by a source (contains title, link, basic metadata, optional full content)
+* **Annotations**: Carver-enriched updates containing rich metadata, insights, scores
+  
+This hierarchy makes it easy to pull feed entries for specific topic(s), filter by various facets, and then run analytics over the resulting set.
 
 ---
 
