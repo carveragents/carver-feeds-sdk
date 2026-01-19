@@ -1,10 +1,13 @@
 ---
-
 layout: home
 title: ""
----------
+---
 
 ## Carver Feeds
+
+![PyPI - Version](https://img.shields.io/pypi/v/carver-feeds-sdk)
+[![Python Support](https://img.shields.io/pypi/pyversions/carver-feeds-sdk.svg)](https://pypi.org/project/carver-feeds-sdk/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Carver Feeds is a real-time regulatory intelligence feed service from Carver Agents. It provides continuously updated regulatory entries (announcements, rules, consultations, enforcement actions, guidance, and more) organized by **topics** (regulatory bodies / sources), so teams can monitor changes, run analysis, and power downstream workflows.
 
