@@ -7,6 +7,7 @@ Lessons learned during SDK development, documented for future enhancement and cr
 - `2025-11-18-1855-feat-feed-new-field` - S3 content fetching implementation (v0.2.0)
 - `2026-01-12-1224-feat-s3-endpoints` - User topic subscriptions & S3 pre-signed URL architecture
 - `2026-01-13-1207-feat-new-get-endpoint` - Annotations endpoint implementation with API structure discovery
+- `2026-01-19-1011-docs-annotations-update` - Update documentation to include annotations details
 
 ## LESSONS
 
@@ -105,5 +106,5 @@ Never assume external API response structure based on documentation or spec alon
 
 ---
 
-**Document Version**: 1.2
-**Last Updated**: 2026-01-13
+**Document Version**: 1.3
+**Last Updated**: 2026-01-19
