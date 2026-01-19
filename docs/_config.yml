@@ -1,2 +1,5 @@
 theme: minima
 title: Documentation for CarverAgents Feeds
+
+header_pages:
+  - index.md
