@@ -27,11 +27,12 @@ Comprehensive developer guide covering:
 ### API Reference (`api-reference.md`)
 Complete technical reference including:
 - API endpoints and authentication
-- All data schemas (Topic, Feed, Entry)
+- All data schemas (Topic, Entry, Annotation)
 - Module API reference (CarverFeedsAPIClient, FeedsDataManager, EntryQueryEngine, S3ContentClient)
 - Common patterns and workflows
 - Error handling guide
 - Performance considerations
+- Annotations endpoint with AI-generated insights and filtering
 
 ### Lessons Learned (`LESSONS.md`)
 Development insights and best practices:
@@ -84,6 +85,7 @@ Development insights and best practices:
 ```
 Topic (regulatory body)
   └─ Entry (individual article)
+      └─ Annotation (AI-generated insights)
 ```
 
 ### Content Fetching
@@ -98,12 +100,13 @@ When updating documentation:
 1. Keep [Technical Details](technical-details.md) as single source of truth for development/architecture details
 2. Keep [API Reference](api-reference.md) as single source of truth for API specifications
 3. Update [Main README](../README.md) for user-facing guidance and quick start
-4. Add examples to [Examples directory](../examples/) for common workflows
-5. Update [Lessons Learned](LESSONS.md) with insights from development
-6. Keep this index synchronized with documentation changes
+4. Synchronize updates to [Main SDK Index](../docs/sdk/index.md) if adding new user-facing features (maintain consistency between the two entry points)
+5. Add examples to [Examples directory](../examples/) for common workflows
+6. Update [Lessons Learned](LESSONS.md) with insights from development
+7. Keep this index synchronized with documentation changes
 
 ---
 
-**Last Updated**: 2026-01-15
+**Last Updated**: 2026-01-19
 **SDK Version**: 0.2.0+ (v0.3.0 planned)
 **Status**: Production Ready
