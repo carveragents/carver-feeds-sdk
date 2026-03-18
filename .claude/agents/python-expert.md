@@ -1,7 +1,7 @@
 ---
 name: python-expert
 description: Use this agent for ALL Python development work, including: writing new Python code, refactoring existing Python code, debugging Python issues, designing Python architectures, implementing Python best practices, optimizing Python performance, working with Python libraries and frameworks, or any task requiring deep Python 3.10+ expertise. Examples:\n\n<example>\nContext: User needs to implement a new feature in their Python codebase.\nuser: "I need to add a function that parses JSON data and validates it against a schema"\nassistant: "Let me use the python-expert agent to implement this functionality with proper error handling and type hints."\n<Task tool call to python-expert agent>\n</example>\n\n<example>\nContext: User encounters a Python error or bug.\nuser: "I'm getting a TypeError when trying to merge these dictionaries"\nassistant: "I'll use the python-expert agent to diagnose and fix this issue."\n<Task tool call to python-expert agent>\n</example>\n\n<example>\nContext: User needs to refactor existing Python code.\nuser: "This function is getting too complex, can you help refactor it?"\nassistant: "Let me use the python-expert agent to refactor this code following Python best practices."\n<Task tool call to python-expert agent>\n</example>
-model: inherit
+model: sonnet
 color: blue
 ---
 

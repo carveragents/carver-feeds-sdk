@@ -12,12 +12,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Carver Feeds SDK** is a Python library providing access to the Carver Feeds API for regulatory feed data. Published to PyPI as `carver-feeds-sdk`, it's a production-ready library with comprehensive error handling, type hints, and documentation.
 
-## Specialized Sub-Agents Available
-
 **ALWAYS** 
 1. Use the appropriate specialized sub-agents available for the task being worked on. 
-2. Provide the specialized sub-agents with the current working session goal. 
-3. Run the Python Code Reviewer agent after each code change and have the Python Expert fix any issues found.
+2. Run the Python Code Reviewer agent after each code change and have the Python Expert fix any issues found.
+
+## Specialized Sub-Agents Available
+
+The following specialized sub-agents are available for use:
 
 - **python-code-reviewer**: Review any new or modified Python code for quality, maintainability, and adherence to best practices. 
 - **python-expert**: Write and test all Python code for the library.

@@ -2,7 +2,7 @@
 name: python-code-reviewer
 description: Use this agent when you have completed writing a logical chunk of Python code and want it reviewed for quality, security, performance, and adherence to best practices. Examples:\n\n- User: "I just wrote a new authentication module for our API. Can you review it?"\n  Assistant: "Let me use the python-code-reviewer agent to analyze your authentication module for security vulnerabilities, code quality, and best practices."\n\n- User: "Here's my implementation of the data processing pipeline:"\n  [code provided]\n  Assistant: "I'll use the python-code-reviewer agent to review this pipeline implementation for performance optimization opportunities, design patterns, and potential issues."\n\n- User: "I've refactored the database layer. Please check if it follows our coding standards."\n  Assistant: "I'm launching the python-code-reviewer agent to evaluate your database layer refactoring against our coding standards and best practices."\n\n- User: "Can you look at this function I wrote for handling user uploads?"\n  Assistant: "Let me use the python-code-reviewer agent to review your upload handler for security vulnerabilities, error handling, and code quality."
 tools: Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, BashOutput, KillShell
-model: inherit
+model: sonnet
 color: red
 ---
 
