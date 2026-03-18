@@ -1573,5 +1573,5 @@ except Exception as e:
 
 **Document Version**: 2.0
 **Last Updated**: 2025-10-26
-**SDK Version**: 0.3.0+
+**SDK Version**: 0.4.0+
 **Status**: Production Ready
