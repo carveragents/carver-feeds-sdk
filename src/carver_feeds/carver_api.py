@@ -216,9 +216,13 @@ class CarverFeedsAPIClient:
         jitter = random.uniform(0, delay * 0.25)
         return delay + jitter
 
-    def list_topics(self) -> list[dict]:
+    def list_topics(self, details: bool = False) -> list[dict]:
         """
         Fetch all topics from /api/v1/feeds/topics.
+
+        Args:
+            details: If True, include detailed information for each topic.
+                Defaults to False.
 
         Returns:
             List of topic dictionaries
@@ -228,9 +232,11 @@ class CarverFeedsAPIClient:
             >>> client = get_client()
             >>> topics = client.list_topics()
             >>> print(f"Found {len(topics)} topics")
+            >>> detailed_topics = client.list_topics(details=True)
         """
         logger.info("Fetching topics...")
-        return self._make_request("GET", "/api/v1/feeds/topics")
+        params = {"details": "true"} if details else None
+        return self._make_request("GET", "/api/v1/feeds/topics", params=params)
 
     def get_topic_entries(self, topic_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> list[dict]:
         """
