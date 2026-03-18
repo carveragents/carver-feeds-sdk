@@ -65,6 +65,10 @@ client = get_client()
 topics = client.list_topics()
 print(f"Found {len(topics)} topics")
 
+# Fetch topics with detailed information
+detailed_topics = client.list_topics(details=True)
+print(f"First topic acronym: {detailed_topics[0].get('acronym')}")
+
 # Fetch entries for a specific topic
 entries = client.get_topic_entries(topic_id="topic-123")
 print(f"Found {len(entries)} entries")
@@ -163,7 +167,7 @@ Annotation (AI-generated insights and classifications)
 ```
 
 **Key Fields**:
-- **Topic**: `id`, `name`, `description`, `is_active`, timestamps
+- **Topic**: `id`, `name`, `description`, `is_active`, timestamps (use `details=True` for extended fields: `acronym`, `jurisdiction_code`, `sectors`, `industries`, `functions`, and more)
 - **Entry**: `id`, `title`, `link`, `entry_content_markdown`, `description`, `published_at`, `feed_id`, `topic_id`, `content_status`, `s3_content_md_path`, `s3_content_html_path`, `is_active`, timestamps
 - **Annotation**: `scores` (impact, urgency, relevance), `classification` (update_type, regulatory_source), `metadata` (tags, impact_summary, impacted_business, critical_dates)
 

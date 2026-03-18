@@ -8,6 +8,7 @@ Lessons learned during SDK development, documented for future enhancement and cr
 - `2026-01-12-1224-feat-s3-endpoints` - User topic subscriptions & S3 pre-signed URL architecture
 - `2026-01-13-1207-feat-new-get-endpoint` - Annotations endpoint implementation with API structure discovery
 - `2026-01-19-1011-docs-annotations-update` - Update documentation to include annotations details
+- `2026-03-17-1501-topics-api-changes` - Topics API details parameter implementation
 
 ## LESSONS
 
@@ -88,23 +89,24 @@ Documentation references to non-existent code are worse than no documentation—
 
 **Applicable To**: Any documentation system; especially good candidates for CI validation
 
-### 6. Validate Against Real APIs Early to Avoid Incorrect Assumptions
+### 6. Validate All API Behavior Against Real APIs Early (Parameters, Responses, Behavior)
 
 **Problem Encountered**:
-During implementation of the annotations endpoint, assumed API response would have simple float scores and a `summary` field. Testing against real API revealed complex nested structure: scores are objects with `{label, score, confidence}`, and rich metadata includes `impact_summary`, `impacted_business`, `critical_dates`.
+Two instances of incorrect assumptions about external APIs: (1) During annotations endpoint implementation, assumed response would have simple float scores and a `summary` field; testing revealed complex nested objects with `{label, score, confidence}`. (2) When adding topics API `details` parameter support, initially assumed parameter name would be `detail` (singular); real API uses `details` (plural).
 
 **Mitigation**:
-- Added debug output when first testing to inspect actual API response structure
-- Immediately updated code, documentation, and test fixtures to match reality
-- Created comprehensive documentation showing actual nested structure
-- All examples tested against real API before finalizing
+- Created test scripts that exercise actual API behavior during development
+- Tested parameter variations (singular/plural) against both staging and production
+- Inspected actual response structures when implementing new endpoints
+- Tested across multiple environments (staging, prod) early
+- Immediately updated code and documentation to match reality
 
 **Lesson Learned**:
-Never assume external API response structure based on documentation or spec alone. Test integration code against real APIs early (even during development, not just at the end). Real APIs often return richer data structures than anticipated, and tests using simplified fixtures will hide these differences until production.
+Never assume external API behavior—parameter names, response structures, or data types—based on documentation or intuition alone. Build test scripts early that validate assumptions against the real API (in both staging and production environments). Even well-intentioned specs often differ from implementation, and tests using simplified fixtures will hide these differences until production.
 
-**Applicable To**: Any SDK or library integrating external APIs; critical for integration testing strategy
+**Applicable To**: Any SDK or library integrating external APIs; essential for integration testing and early development validation
 
 ---
 
-**Document Version**: 1.3
-**Last Updated**: 2026-01-19
+**Document Version**: 1.4
+**Last Updated**: 2026-03-17

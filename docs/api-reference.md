@@ -58,18 +58,58 @@ The API enforces rate limits. The SDK includes automatic retry logic with expone
 
 **Description**: Fetch all regulatory topics available in the system.
 
-**Parameters**: None
+**Parameters**:
+- `details` (optional): When `true`, returns extended topic information. Defaults to `false`.
 
-**Response**:
+**Response** (default, 9 fields):
 ```json
 [
   {
     "id": "topic-123",
     "name": "Banking Regulation",
     "description": "Updates on banking and financial regulations",
+    "color": "#1e40af",
+    "is_active": true,
+    "meta_summary_window_days": 30,
+    "is_default_subscription": false,
     "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-20T14:22:00Z",
-    "is_active": true
+    "updated_at": "2024-01-20T14:22:00Z"
+  }
+]
+```
+
+**Response** (with `details=true`, 36 fields — additional fields shown):
+```json
+[
+  {
+    "...base fields...": "...",
+    "acronym": "BOK",
+    "synonyms": "Bank of Korea; Korean Central Bank",
+    "govt_body": true,
+    "entity_type": "Central Bank; Regulator",
+    "sub_entity_type": "Monetary Authority; Banking Supervisor",
+    "hq": "KR",
+    "hq_detail": "Republic of Korea",
+    "jurisdiction_code": "KR",
+    "jurisdiction_detail": "Republic of Korea",
+    "scope": "National",
+    "category": null,
+    "categories": [],
+    "tags": [],
+    "sectors": "Banking; Payment Systems; Financial Markets",
+    "industries": "Commercial Banks; Specialized Banks",
+    "functions": "Monetary Policy; Banking Supervision",
+    "legal_instruments": "Regulations; Supervisory Guidelines; Circulars",
+    "constituents": "Monetary Policy Board; Financial Supervision Department",
+    "media": "Press Releases; Monetary Policy Statements",
+    "primary_url": "https://www.bok.or.kr",
+    "base_domain": "bok.or.kr",
+    "primary_languages": "Korean; English",
+    "scrape_frequency": "Daily",
+    "additional_notes": "...",
+    "metadata": {},
+    "created_by_id": "user-uuid",
+    "organization_id": null
   }
 ]
 ```
@@ -79,7 +119,12 @@ The API enforces rate limits. The SDK includes automatic retry logic with expone
 from carver_feeds import get_client
 
 client = get_client()
+
+# Basic topic list
 topics = client.list_topics()
+
+# Detailed topic list with extended fields
+detailed_topics = client.list_topics(details=True)
 ```
 
 ---
@@ -349,11 +394,44 @@ print(f"Most common tags: {tag_counts.most_common(5)}")
 | `id` | str | Unique topic identifier |
 | `name` | str | Topic name |
 | `description` | str | Topic description |
+| `color` | str | Topic color code |
+| `is_active` | bool | Active status |
+| `meta_summary_window_days` | int | Summary window in days |
+| `is_default_subscription` | bool | Default subscription status |
 | `created_at` | datetime64 | Creation timestamp |
 | `updated_at` | datetime64 | Last update timestamp |
-| `is_active` | bool | Active status |
 
-**Extra columns**: API may return additional undocumented fields (e.g., `color`, `icon`). These are preserved in the DataFrame.
+**Extended columns** (when `details=True`, 27 additional fields):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `acronym` | str | Topic acronym (e.g., "BOK") |
+| `synonyms` | str | Alternative names (semicolon-separated) |
+| `govt_body` | bool | Whether topic is a government body |
+| `entity_type` | str | Entity classification |
+| `sub_entity_type` | str | Sub-entity classification |
+| `hq` | str | Headquarters country code |
+| `hq_detail` | str | Headquarters full name |
+| `jurisdiction_code` | str | Jurisdiction country code |
+| `jurisdiction_detail` | str | Jurisdiction full name |
+| `scope` | str | Scope (e.g., "National") |
+| `category` | str | Category |
+| `categories` | list | Category list |
+| `tags` | list | Tag list |
+| `sectors` | str | Covered sectors (semicolon-separated) |
+| `industries` | str | Covered industries (semicolon-separated) |
+| `functions` | str | Regulatory functions (semicolon-separated) |
+| `legal_instruments` | str | Legal instrument types |
+| `constituents` | str | Constituent departments |
+| `media` | str | Media/publication types |
+| `primary_url` | str | Primary website URL |
+| `base_domain` | str | Base domain |
+| `primary_languages` | str | Languages (semicolon-separated) |
+| `scrape_frequency` | str | How often data is collected |
+| `additional_notes` | str | Additional context |
+| `metadata` | dict | Extra metadata |
+| `created_by_id` | str | Creator user ID |
+| `organization_id` | str | Organization ID |
 
 ---
 
@@ -611,14 +689,28 @@ client = CarverFeedsAPIClient(
 
 **Methods**:
 
-##### `list_topics() -> List[Dict]`
+##### `list_topics(details: bool = False) -> List[Dict]`
 Fetch all topics from the API.
 
-**Returns**: List of topic dictionaries
+**Parameters**:
+- `details`: If True, include extended topic information (acronym, jurisdiction, sectors, industries, functions, etc.). Defaults to False.
+
+**Returns**: List of topic dictionaries (9 fields by default; 36 fields with `details=True`)
 
 **Raises**:
 - `AuthenticationError`: Invalid API key
 - `CarverAPIError`: API request failed
+
+**Example**:
+```python
+# Basic topics
+topics = client.list_topics()
+
+# Detailed topics with jurisdiction, sectors, etc.
+detailed = client.list_topics(details=True)
+print(detailed[0]['acronym'])  # e.g., "BOK"
+print(detailed[0]['jurisdiction_code'])  # e.g., "KR"
+```
 
 ---
 

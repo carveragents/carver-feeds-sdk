@@ -582,7 +582,9 @@ The SDK interacts with these Carver API endpoints:
 GET /api/v1/feeds/topics
 ```
 - List all regulatory topics
-- Returns: List of topic objects
+- Parameters:
+  - `details` (optional): `true` to include extended topic information (acronym, jurisdiction, sectors, industries, functions, etc.). Defaults to `false`.
+- Returns: List of topic objects (9 base fields; 36 fields with `details=true`)
 - Pagination: Not required (small dataset)
 
 ### Entries by Topic
