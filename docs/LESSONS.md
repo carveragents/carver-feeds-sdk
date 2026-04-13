@@ -9,6 +9,7 @@ Lessons learned during SDK development, documented for future enhancement and cr
 - `2026-01-13-1207-feat-new-get-endpoint` - Annotations endpoint implementation with API structure discovery
 - `2026-01-19-1011-docs-annotations-update` - Update documentation to include annotations details
 - `2026-03-17-1501-topics-api-changes` - Topics API details parameter implementation
+- `2026-04-12-2215-feat-statutes-apis` - Statutes API endpoints implementation (v0.5.0)
 
 ## LESSONS
 
@@ -106,7 +107,24 @@ Never assume external API behavior—parameter names, response structures, or da
 
 **Applicable To**: Any SDK or library integrating external APIs; essential for integration testing and early development validation
 
+### 7. Response Validation Consistency Prevents Silent Failures
+
+**Problem Encountered**:
+During statutes implementation code review, new API methods validated response type (`isinstance(response, dict)`) but did not validate presence of documented response fields. Existing `get_user_topic_subscriptions` method did validate field presence. This inconsistency meant new code would raise confusing `KeyError` at the call site instead of a descriptive `CarverAPIError`.
+
+**Mitigation**:
+- Added field-presence validation to all new statutes methods after type check
+- Validated `statutes` field in `list_statutes` response
+- Validated `feed_entries` field in `get_statute_annotations` response
+- Matched validation pattern from existing `get_user_topic_subscriptions` method
+- Added tests ensuring CarverAPIError is raised for missing fields
+
+**Lesson Learned**:
+API methods should validate not just response *type* but also *structure*—presence of documented fields. Type validation alone catches malformed responses but misses incomplete data that passes type checks. Field-presence validation gives callers immediate, actionable error messages at the API boundary rather than opaque failures deep in user code.
+
+**Applicable To**: Any library providing API wrappers; improves error diagnostics and reduces debugging time for users
+
 ---
 
-**Document Version**: 1.4
-**Last Updated**: 2026-03-17
+**Document Version**: 1.5
+**Last Updated**: 2026-04-13

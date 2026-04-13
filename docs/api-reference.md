@@ -431,6 +431,163 @@ print(f"Most common tags: {tag_counts.most_common(5)}")
 
 ---
 
+## Statutes
+
+Access the statutes (legislative and regulatory reference documents) in the Carver knowledge base.
+
+### `list_statutes()`
+
+Fetch a paginated list of statutes with optional filtering.
+
+**Endpoint**: `GET /api/v1/statutes/`
+
+**Parameters**:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `jurisdiction` | `str \| None` | `None` | Filter by jurisdiction code (e.g., `"US"`, `"EU"`, `"UK"`) |
+| `legal_level` | `str \| None` | `None` | Filter by legal level (e.g., `"legislative"`, `"regulatory"`) |
+| `document_type` | `str \| None` | `None` | Filter by document type (e.g., `"law"`, `"regulation"`, `"directive"`) |
+| `original_language` | `str \| None` | `None` | Filter by language code (e.g., `"en"`, `"es"`) |
+| `year` | `int \| None` | `None` | Filter by year of enactment |
+| `search` | `str \| None` | `None` | Full-text search query |
+| `limit` | `int` | `50` | Maximum number of statutes per page |
+| `offset` | `int` | `0` | Number of statutes to skip (for pagination) |
+
+**Returns**: `dict` with keys:
+- `statutes`: List of statute dictionaries
+- `total`: Total number of matching statutes
+- `limit`: Page size used
+- `offset`: Current offset
+
+**Example**:
+```python
+from carver_feeds import get_client
+client = get_client()
+
+# List all statutes
+result = client.list_statutes()
+print(f"Total statutes: {result['total']}")
+
+# Filter by jurisdiction and year
+us_statutes = client.list_statutes(jurisdiction="US", year=2010, limit=20)
+
+# Full-text search
+results = client.list_statutes(search="data protection", limit=10)
+```
+
+---
+
+### `get_statute(statute_id)`
+
+Fetch a single statute by its unique ID.
+
+**Endpoint**: `GET /api/v1/statutes/{statute_id}`
+
+**Parameters**:
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `statute_id` | `str` | Yes | Unique statute identifier |
+
+**Returns**: Statute dictionary (see [StatuteOut Schema](#statuteout-schema) below)
+
+**Raises**: `ValueError` if `statute_id` is empty
+
+**Example**:
+```python
+statute = client.get_statute("statute-uuid-123")
+print(statute["canonical_name"])
+print(statute["jurisdiction"], statute["year"])
+```
+
+---
+
+### `get_statute_filter_options()`
+
+Fetch the distinct values available for filtering statutes. Useful for building dynamic filter UIs.
+
+**Endpoint**: `GET /api/v1/statutes/filters/options`
+
+**Returns**: `dict` with keys:
+- `jurisdictions`: List of available jurisdiction codes
+- `legal_levels`: List of available legal levels
+- `document_types`: List of available document types
+- `languages`: List of available language codes
+- `years`: List of available enactment years
+
+**Example**:
+```python
+options = client.get_statute_filter_options()
+print(options["jurisdictions"])   # ["US", "EU", "UK", "ES", ...]
+print(options["document_types"])  # ["law", "regulation", "directive", ...]
+```
+
+---
+
+### `get_statute_annotations(statute_id, limit=100, offset=0)`
+
+Fetch feed entry annotations linked to a specific statute.
+
+**Endpoint**: `GET /api/v1/statutes/{statute_id}/annotations`
+
+**Parameters**:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `statute_id` | `str` | — (required) | Unique statute identifier |
+| `limit` | `int` | `100` | Maximum number of feed entries per page |
+| `offset` | `int` | `0` | Number of entries to skip (for pagination) |
+
+**Returns**: `dict` with keys:
+- `statute_id`: UUID of the statute
+- `statute_name`: Canonical name of the statute
+- `feed_entries`: List of related feed entry dictionaries (each may contain an `annotation` field)
+- `total`: Total number of related feed entries
+
+**Raises**: `ValueError` if `statute_id` is empty
+
+**Example**:
+```python
+result = client.get_statute_annotations("statute-uuid-123")
+print(f"Statute: {result['statute_name']}")
+print(f"Related entries: {result['total']}")
+
+for entry in result["feed_entries"]:
+    print(f"  - {entry['title']}")
+    ann = entry.get("annotation", {})
+    if ann.get("summary"):
+        print(f"    Summary: {ann['summary']}")
+
+# Paginate through large result sets
+page2 = client.get_statute_annotations("statute-uuid-123", limit=50, offset=50)
+```
+
+---
+
+### StatuteOut Schema
+
+Fields returned by `get_statute()` and items inside `list_statutes()["statutes"]`:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `str` | Unique identifier (UUID) |
+| `grouping_key` | `str` | Stable slug used to group statute variants |
+| `canonical_name` | `str` | Official name of the statute |
+| `jurisdiction` | `str` | Jurisdiction code (e.g., `"US"`, `"EU"`) |
+| `legal_level` | `str` | Legal level (e.g., `"legislative"`, `"regulatory"`) |
+| `document_type` | `str` | Document type (e.g., `"law"`, `"regulation"`) |
+| `original_language` | `str` | ISO 639-1 language code (e.g., `"en"`) |
+| `parent_law` | `str \| None` | ID of the parent law, if applicable |
+| `code_citation` | `str \| None` | Official citation (e.g., `"Pub.L. 111-203"`) |
+| `year` | `int \| None` | Year of enactment |
+| `variants` | `list[str]` | Alternative or colloquial names |
+| `chunk_text` | `str \| None` | Excerpt of the statute text |
+| `created_at` | `str` | ISO 8601 creation timestamp |
+| `updated_at` | `str` | ISO 8601 last-updated timestamp |
+
+---
+
 ## Data Schemas
 
 ### Category Schema
@@ -1706,5 +1863,5 @@ except Exception as e:
 
 **Document Version**: 2.0
 **Last Updated**: 2025-10-26
-**SDK Version**: 0.4.0+
+**SDK Version**: 0.5.0+
 **Status**: Production Ready

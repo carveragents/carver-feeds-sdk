@@ -260,3 +260,141 @@ def sample_categories() -> list[dict]:
             "updated_at": "2024-01-01T00:00:00Z",
         },
     ]
+
+
+@pytest.fixture
+def sample_statutes() -> dict:
+    """Sample paginated statute list response for testing."""
+    return {
+        "statutes": [
+            {
+                "id": "statute-1",
+                "grouping_key": "us-dodd-frank-2010",
+                "canonical_name": "Dodd-Frank Wall Street Reform Act",
+                "jurisdiction": "US",
+                "legal_level": "legislative",
+                "document_type": "law",
+                "original_language": "en",
+                "parent_law": None,
+                "code_citation": "Pub.L. 111-203",
+                "year": 2010,
+                "variants": ["Dodd-Frank Act"],
+                "chunk_text": "An Act to promote the financial stability of the United States...",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T00:00:00Z",
+            },
+            {
+                "id": "statute-2",
+                "grouping_key": "eu-gdpr-2016",
+                "canonical_name": "General Data Protection Regulation",
+                "jurisdiction": "EU",
+                "legal_level": "legislative",
+                "document_type": "regulation",
+                "original_language": "en",
+                "parent_law": None,
+                "code_citation": "Regulation (EU) 2016/679",
+                "year": 2016,
+                "variants": ["GDPR"],
+                "chunk_text": "A regulation on the protection of natural persons...",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T00:00:00Z",
+            },
+        ],
+        "total": 2,
+        "limit": 50,
+        "offset": 0,
+    }
+
+
+@pytest.fixture
+def sample_statute() -> dict:
+    """Sample single statute response for testing."""
+    return {
+        "id": "statute-1",
+        "grouping_key": "us-dodd-frank-2010",
+        "canonical_name": "Dodd-Frank Wall Street Reform Act",
+        "jurisdiction": "US",
+        "legal_level": "legislative",
+        "document_type": "law",
+        "original_language": "en",
+        "parent_law": None,
+        "code_citation": "Pub.L. 111-203",
+        "year": 2010,
+        "variants": ["Dodd-Frank Act"],
+        "chunk_text": "An Act to promote the financial stability of the United States...",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z",
+    }
+
+
+@pytest.fixture
+def sample_statute_filter_options() -> dict:
+    """Sample statute filter options response for testing."""
+    return {
+        "jurisdictions": ["US", "EU", "UK", "ES"],
+        "legal_levels": ["legislative", "regulatory"],
+        "document_types": ["law", "regulation", "directive"],
+        "languages": ["en", "es", "fr"],
+        "years": [2010, 2016, 2018, 2020],
+    }
+
+
+@pytest.fixture
+def sample_statute_annotations() -> dict:
+    """Sample statute annotations response for testing."""
+    return {
+        "statute_id": "statute-1",
+        "statute_name": "Dodd-Frank Wall Street Reform Act",
+        "feed_entries": [
+            {
+                "id": "entry-1",
+                "title": "Dodd-Frank implementation update",
+                "annotation": {
+                    "id": "annotation-1",
+                    "feed_entry_id": "entry-1",
+                    "crawl_outcome_id": "crawl-1",
+                    "org_id": "org-1",
+                    "role_id": "role-1",
+                    "dag_id": "dag-1",
+                    "artifact_type_id": "artifact-type-1",
+                    "output": {},
+                    "language": "en",
+                    "reconciled_date": "2024-01-15T00:00:00Z",
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "scores": {
+                        "impact": {"label": "high", "score": 8, "confidence": 0.92},
+                        "urgency": {"label": "medium", "score": 5, "confidence": 0.87},
+                        "relevance": {"label": "high", "score": 7.5, "confidence": 0.90},
+                    },
+                    "classification": {
+                        "update_type": "regulatory_update",
+                        "regulatory_source": {
+                            "name": "US Treasury",
+                            "division_office": "Financial Stability Oversight Council",
+                        },
+                        "metadata": {
+                            "title": "Dodd-Frank implementation update",
+                            "language": ["English"],
+                        },
+                    },
+                    "metadata": {
+                        "tags": ["dodd-frank", "banking", "financial-stability"],
+                        "impact_summary": {
+                            "objective": "Implement Dodd-Frank systemic risk oversight provisions",
+                            "why_it_matters": "Strengthens financial system stability",
+                            "what_changed": "Updated capital requirements for systemically important firms",
+                            "risk_impact": "Non-compliance may result in regulatory sanctions",
+                            "key_requirements": ["Enhanced stress testing", "Resolution planning"],
+                        },
+                        "impacted_business": {
+                            "industry": ["Banking", "Financial Services"],
+                            "jurisdiction": ["Federal"],
+                            "type": ["Banks", "Financial Holding Companies"],
+                        },
+                        "impacted_functions": ["Risk Management", "Compliance", "Treasury"],
+                    },
+                },
+            }
+        ],
+        "total": 1,
+    }

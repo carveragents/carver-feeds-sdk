@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 # API Configuration Constants
 DEFAULT_BASE_URL = "https://app.carveragents.ai"
 DEFAULT_PAGE_LIMIT = 100  # API server enforces max 100 entries per page
+DEFAULT_STATUTES_PAGE_LIMIT = 50  # Statutes endpoint default page size
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT_SECONDS = 30
 RETRY_BACKOFF_FACTOR = 2
@@ -439,6 +440,211 @@ class CarverFeedsAPIClient:
         if not isinstance(response, list):
             raise CarverAPIError(
                 f"Unexpected response format. Expected list, got {type(response).__name__}"
+            )
+
+        return response
+
+    def list_statutes(
+        self,
+        jurisdiction: str | None = None,
+        legal_level: str | None = None,
+        document_type: str | None = None,
+        original_language: str | None = None,
+        year: int | None = None,
+        search: str | None = None,
+        limit: int = DEFAULT_STATUTES_PAGE_LIMIT,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Fetch a paginated list of statutes from /api/v1/statutes/.
+
+        Args:
+            jurisdiction: Filter by jurisdiction (e.g., "US", "EU", "UK").
+                Defaults to None.
+            legal_level: Filter by legal level (e.g., "legislative", "regulatory").
+                Defaults to None.
+            document_type: Filter by document type (e.g., "law", "regulation", "directive").
+                Defaults to None.
+            original_language: Filter by original language (e.g., "en", "es").
+                Defaults to None.
+            year: Filter by year of enactment. Must be a 4-digit calendar year (1000–2100).
+                Defaults to None.
+            search: Full-text search query. Defaults to None.
+            limit: Maximum number of statutes to return per page (default: 50).
+            offset: Number of statutes to skip for pagination (default: 0).
+
+        Returns:
+            Dict with keys: ``statutes`` (list), ``total`` (int), ``limit`` (int), ``offset`` (int)
+
+        Raises:
+            ValueError: If limit is not positive, offset is negative, or year is out of range
+            CarverAPIError: If the response format is unexpected or missing required fields
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> result = client.list_statutes()
+            >>> print(f"Found {result['total']} statutes")
+            >>> us_statutes = client.list_statutes(jurisdiction="US", limit=20)
+        """
+        if limit <= 0:
+            raise ValueError("limit must be a positive integer")
+        if offset < 0:
+            raise ValueError("offset must be a non-negative integer")
+        if year is not None and not (1000 <= year <= 2100):
+            raise ValueError(f"year must be a 4-digit calendar year, got {year}")
+
+        active_filters = [
+            f"jurisdiction={jurisdiction}" if jurisdiction is not None else None,
+            f"legal_level={legal_level}" if legal_level is not None else None,
+            f"document_type={document_type}" if document_type is not None else None,
+            f"original_language={original_language}" if original_language is not None else None,
+            f"year={year}" if year is not None else None,
+            f"search={search!r}" if search is not None else None,
+        ]
+        filter_summary = ", ".join(f for f in active_filters if f is not None) or "none"
+        logger.info(f"Fetching statutes (filters: {filter_summary}, limit={limit}, offset={offset})...")
+
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if jurisdiction is not None:
+            params["jurisdiction"] = jurisdiction
+        if legal_level is not None:
+            params["legal_level"] = legal_level
+        if document_type is not None:
+            params["document_type"] = document_type
+        if original_language is not None:
+            params["original_language"] = original_language
+        if year is not None:
+            params["year"] = year
+        if search is not None:
+            params["search"] = search
+
+        response = self._make_request("GET", "/api/v1/statutes/", params=params)
+
+        if not isinstance(response, dict):
+            raise CarverAPIError(
+                f"Unexpected response format. Expected dict, got {type(response).__name__}"
+            )
+
+        if "statutes" not in response:
+            raise CarverAPIError(
+                f"Response missing 'statutes' field. Response: {response}"
+            )
+
+        return response
+
+    def get_statute(self, statute_id: str) -> dict[str, Any]:
+        """
+        Fetch a single statute by its ID from /api/v1/statutes/{statute_id}.
+
+        Args:
+            statute_id: Statute identifier (required)
+
+        Returns:
+            Statute dictionary containing all statute fields
+
+        Raises:
+            ValueError: If statute_id is not provided
+            CarverAPIError: If the response format is unexpected
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> statute = client.get_statute("statute-uuid-123")
+            >>> print(statute["canonical_name"])
+        """
+        if not statute_id:
+            raise ValueError("statute_id is required")
+
+        logger.info(f"Fetching statute {statute_id}...")
+        response = self._make_request("GET", f"/api/v1/statutes/{statute_id}")
+
+        if not isinstance(response, dict):
+            raise CarverAPIError(
+                f"Unexpected response format. Expected dict, got {type(response).__name__}"
+            )
+
+        return response
+
+    def get_statute_filter_options(self) -> dict[str, Any]:
+        """
+        Fetch available filter options for statutes from /api/v1/statutes/filters/options.
+
+        Returns:
+            Dict with keys: ``jurisdictions``, ``legal_levels``, ``document_types``,
+            ``languages``, ``years``
+
+        Raises:
+            CarverAPIError: If the response format is unexpected
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> options = client.get_statute_filter_options()
+            >>> print(options["jurisdictions"])
+        """
+        logger.info("Fetching statute filter options...")
+        response = self._make_request("GET", "/api/v1/statutes/filters/options")
+
+        if not isinstance(response, dict):
+            raise CarverAPIError(
+                f"Unexpected response format. Expected dict, got {type(response).__name__}"
+            )
+
+        return response
+
+    def get_statute_annotations(
+        self,
+        statute_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Fetch feed entry annotations linked to a statute from
+        /api/v1/statutes/{statute_id}/annotations.
+
+        Args:
+            statute_id: Statute identifier (required)
+            limit: Maximum number of entries to return per page (default: 100).
+            offset: Number of entries to skip for pagination (default: 0).
+
+        Returns:
+            Dict with keys: ``statute_id`` (str), ``statute_name`` (str),
+            ``feed_entries`` (list), ``total`` (int)
+
+        Raises:
+            ValueError: If statute_id is not provided
+            CarverAPIError: If the response format is unexpected
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> result = client.get_statute_annotations("statute-uuid-123")
+            >>> print(f"Found {result['total']} related feed entries")
+            >>> for entry in result["feed_entries"]:
+            ...     print(entry["title"])
+        """
+        if not statute_id:
+            raise ValueError("statute_id is required")
+        if limit <= 0:
+            raise ValueError("limit must be a positive integer")
+        if offset < 0:
+            raise ValueError("offset must be a non-negative integer")
+
+        logger.info(f"Fetching annotations for statute {statute_id}...")
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        response = self._make_request(
+            "GET", f"/api/v1/statutes/{statute_id}/annotations", params=params
+        )
+
+        if not isinstance(response, dict):
+            raise CarverAPIError(
+                f"Unexpected response format. Expected dict, got {type(response).__name__}"
+            )
+
+        if "feed_entries" not in response:
+            raise CarverAPIError(
+                f"Response missing 'feed_entries' field. Response: {response}"
             )
 
         return response
