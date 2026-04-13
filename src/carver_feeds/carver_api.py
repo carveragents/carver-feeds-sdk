@@ -216,13 +216,31 @@ class CarverFeedsAPIClient:
         jitter = random.uniform(0, delay * 0.25)
         return delay + jitter
 
-    def list_topics(self, details: bool = False) -> list[dict]:
+    def list_categories(self) -> list[dict]:
+        """
+        Fetch all categories from /api/v1/feeds/categories.
+
+        Returns:
+            List of category dictionaries
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> categories = client.list_categories()
+            >>> print(f"Found {len(categories)} categories")
+        """
+        logger.info("Fetching categories...")
+        return self._make_request("GET", "/api/v1/feeds/categories")
+
+    def list_topics(self, details: bool = False, category_id: str | None = None) -> list[dict]:
         """
         Fetch all topics from /api/v1/feeds/topics.
 
         Args:
             details: If True, include detailed information for each topic.
                 Defaults to False.
+            category_id: If provided, filter topics by this category ID.
+                Defaults to None.
 
         Returns:
             List of topic dictionaries
@@ -233,9 +251,16 @@ class CarverFeedsAPIClient:
             >>> topics = client.list_topics()
             >>> print(f"Found {len(topics)} topics")
             >>> detailed_topics = client.list_topics(details=True)
+            >>> filtered_topics = client.list_topics(category_id="cat-123")
         """
         logger.info("Fetching topics...")
-        params = {"details": "true"} if details else None
+        params: dict[str, str] | None = None
+        if details or category_id is not None:
+            params = {}
+            if details:
+                params["details"] = "true"
+            if category_id is not None:
+                params["category_id"] = category_id
         return self._make_request("GET", "/api/v1/feeds/topics", params=params)
 
     def get_topic_entries(self, topic_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> list[dict]:

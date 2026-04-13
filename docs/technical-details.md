@@ -128,7 +128,8 @@ The SDK provides three levels of abstraction, each building on the previous:
 - **Purpose**: Convert API responses to pandas DataFrames
 - **Features**:
   - DataFrame conversion
-  - Hierarchical data views (topic → feed → entry)
+  - Hierarchical data views (category → topic → entry)
+  - Category and topic filtering
   - Content fetching integration
   - Metadata extraction from `extracted_metadata` field
 - **Returns**: pandas DataFrames
@@ -138,7 +139,7 @@ The SDK provides three levels of abstraction, each building on the previous:
 - **Purpose**: High-level fluent query interface
 - **Features**:
   - Method chaining for building complex queries
-  - Advanced filtering: by topic, feed, date, status, keywords
+  - Advanced filtering: by category, topic, feed, date, status, keywords
   - Keyword search with AND/OR logic across multiple fields
   - Multiple export formats (DataFrame, CSV, JSON, dict)
   - Lazy content loading (filter first, fetch content later)
@@ -149,12 +150,14 @@ The SDK provides three levels of abstraction, each building on the previous:
 ### Data Model Hierarchy
 
 ```
-Topic (regulatory body like "SEC")
-  └─ Feed (RSS feed)
-       └─ Entry (individual article/post)
+Category (grouping like "Finance", "Medical Devices")
+  └─ Topic (regulatory body like "SEC")
+       └─ Feed (RSS feed)
+            └─ Entry (individual article/post)
 ```
 
 **Key relationships:**
+- Each Topic can belong to one or more Categories (`category_id`)
 - Each Entry belongs to exactly one Feed (`entry.feed_id`)
 - Each Feed belongs to exactly one Topic (`feed.topic_id`)
 - Each Entry also has `topic_id` in `extracted_metadata` (denormalized for convenience)
@@ -201,13 +204,14 @@ dm = FeedsDataManager(api_client=client)
 
 ### Critical Concepts
 
-#### 1. Topic-Specific Endpoints
-The query engine uses topic-specific endpoints for optimal performance:
+#### 1. Category and Topic-Specific Endpoints
+The query engine uses optimized endpoints for performance:
 
-- **Optimized path**: `filter_by_topic()` → uses `/topics/{id}/entries` (fetches entries for that topic only)
+- **Category path**: `filter_by_category()` → uses `/topics?category_id=` to fetch only topics in that category, then fetches entries per topic
+- **Topic path**: `filter_by_topic()` → uses `/topics/{id}/entries` (fetches entries for that topic only)
 - **Unoptimized path**: Fetching all entries requires pagination through large datasets
 
-**Best practice**: Always filter by topic first when possible.
+**Best practice**: Always filter by category or topic first when possible.
 
 #### 2. Lazy Content Loading
 Content is fetched from S3 only when explicitly requested:
@@ -576,14 +580,25 @@ python -m twine upload dist/*
 
 The SDK interacts with these Carver API endpoints:
 
+### Categories
+
+```
+GET /api/v1/feeds/categories
+```
+- List all regulatory categories
+- Parameters: None
+- Returns: List of category objects (id, name, slug, description, color, is_active, topic_count, timestamps)
+- Pagination: Not required (small dataset)
+
 ### Topics
 
 ```
 GET /api/v1/feeds/topics
 ```
-- List all regulatory topics
+- List all regulatory topics, optionally filtered by category
 - Parameters:
   - `details` (optional): `true` to include extended topic information (acronym, jurisdiction, sectors, industries, functions, etc.). Defaults to `false`.
+  - `category_id` (optional): UUID of a category to filter topics by.
 - Returns: List of topic objects (9 base fields; 36 fields with `details=true`)
 - Pagination: Not required (small dataset)
 
@@ -638,12 +653,12 @@ GET /api/v1/feeds/topics/{topic_id}/entries
 
 **Solution:** The SDK automatically handles pagination to fetch all results in batches of 100. You don't need to worry about this unless implementing custom pagination.
 
-### 2. Topic ID Required
-**Issue:** All entry-fetching operations require a `topic_id`.
+### 2. Category or Topic ID Required
+**Issue:** All entry-fetching operations require a `category_id` or `topic_id`.
 
 **Why:** This ensures efficient data loading and prevents unnecessary full table scans.
 
-**Solution:** Always use `filter_by_topic()` first, or provide `topic_id` explicitly.
+**Solution:** Always use `filter_by_category()` or `filter_by_topic()` first, or provide `topic_id` explicitly.
 
 ### 3. Query Engine Caching
 **Issue:** Once data is loaded, it's cached in `_results`.

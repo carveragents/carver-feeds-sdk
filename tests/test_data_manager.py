@@ -438,8 +438,59 @@ class TestGetUserTopicSubscriptionsDF:
         assert "extra_field" in result.columns
 
 
-# Additional tests can be added here for:
-# - get_hierarchical_view method with S3 content
-# - _json_to_dataframe method
-# - Date conversion handling
-# - Schema validation
+class TestGetCategoriesDf:
+    """Tests for get_categories_df method."""
+
+    def test_get_categories_df_success(self, mock_api_client, sample_categories):
+        """Test successful categories DataFrame creation."""
+        mock_api_client.list_categories.return_value = sample_categories
+
+        dm = FeedsDataManager(mock_api_client)
+        df = dm.get_categories_df()
+
+        assert len(df) == 2
+        assert "id" in df.columns
+        assert "name" in df.columns
+        assert "slug" in df.columns
+        assert "topic_count" in df.columns
+        assert "is_active" in df.columns
+        assert df.iloc[0]["name"] == "Finance"
+        assert df.iloc[1]["name"] == "Medical Devices"
+
+        # Verify date columns are datetime
+        assert pd.api.types.is_datetime64_any_dtype(df["created_at"])
+        assert pd.api.types.is_datetime64_any_dtype(df["updated_at"])
+
+        # Verify is_active is boolean
+        assert df["is_active"].dtype == bool
+
+    def test_get_categories_df_empty(self, mock_api_client):
+        """Test get_categories_df with empty result."""
+        mock_api_client.list_categories.return_value = []
+
+        dm = FeedsDataManager(mock_api_client)
+        df = dm.get_categories_df()
+
+        assert len(df) == 0
+        assert "id" in df.columns
+        assert "name" in df.columns
+
+    def test_get_topics_df_with_category_id(self, mock_api_client, sample_topics):
+        """Test get_topics_df passes category_id to API client."""
+        mock_api_client.list_topics.return_value = sample_topics
+
+        dm = FeedsDataManager(mock_api_client)
+        df = dm.get_topics_df(category_id="cat-1")
+
+        assert len(df) == 2
+        mock_api_client.list_topics.assert_called_once_with(category_id="cat-1")
+
+    def test_get_topics_df_without_category_id(self, mock_api_client, sample_topics):
+        """Test get_topics_df without category_id preserves backward compatibility."""
+        mock_api_client.list_topics.return_value = sample_topics
+
+        dm = FeedsDataManager(mock_api_client)
+        df = dm.get_topics_df()
+
+        assert len(df) == 2
+        mock_api_client.list_topics.assert_called_once_with(category_id=None)

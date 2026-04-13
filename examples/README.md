@@ -11,12 +11,13 @@ This directory contains example scripts and comprehensive usage documentation fo
 - [Running Example Scripts](#running-example-scripts)
 
 ### Comprehensive Examples
-1. [Example 1: List All Topics](#example-1-list-all-topics)
+1. [Example 1: List Categories and Topics](#example-1-list-categories-and-topics)
 2. [Example 2: Search Entries in a Topic](#example-2-search-entries-in-a-topic)
 3. [Example 3: Complex Multi-Filter Query](#example-3-complex-multi-filter-query)
 4. [Example 4: Export Results to Different Formats](#example-4-export-results-to-different-formats)
 5. [Example 5: Date Range Analysis](#example-5-date-range-analysis)
 6. [Example 6: Multi-Topic Comparison](#example-6-multi-topic-comparison)
+7. [Example 7: Category-Based Analysis](#example-7-category-based-analysis)
 
 ### Additional Resources
 - [Tips for Effective Usage](#tips-for-effective-usage)
@@ -65,9 +66,10 @@ python basic_usage.py
 ```
 
 Features:
+- Listing categories
 - Direct API client usage
 - DataFrame operations
-- Fetching topics and entries
+- Fetching topics and entries (with optional category filtering)
 - S3 content fetching
 
 ### Advanced Queries
@@ -79,6 +81,7 @@ python advanced_queries.py
 ```
 
 Features:
+- Category-based filtering
 - Method chaining
 - Multi-filter queries
 - Keyword search
@@ -128,9 +131,9 @@ The following examples provide detailed, copy-paste code for common use cases.
 
 ---
 
-## Example 1: List All Topics
+## Example 1: List Categories and Topics
 
-**Scenario**: You want to see what regulatory topics are available in the system.
+**Scenario**: You want to see what categories and topics are available in the system.
 
 **Code**:
 ```python
@@ -139,37 +142,49 @@ from carver_feeds import create_data_manager
 # Initialize data manager
 dm = create_data_manager()
 
+# Fetch all categories
+categories_df = dm.get_categories_df()
+print(f"Total categories: {len(categories_df)}")
+print("\nCategories:")
+print(categories_df[['name', 'topic_count', 'is_active']].to_string(index=False))
+
 # Fetch all topics
 topics_df = dm.get_topics_df()
-
-# Display summary
-print(f"Total topics available: {len(topics_df)}")
+print(f"\nTotal topics available: {len(topics_df)}")
 print(f"Active topics: {topics_df['is_active'].sum()}")
-print(f"Inactive topics: {(~topics_df['is_active']).sum()}")
 
-# Show topic list
-print("\nAvailable Topics:")
-print(topics_df[['id', 'name', 'description', 'is_active']].head(20))
+# Fetch topics filtered by a specific category
+if len(categories_df) > 0:
+    first_cat = categories_df.iloc[0]
+    cat_topics = dm.get_topics_df(category_id=first_cat['id'])
+    print(f"\nTopics in '{first_cat['name']}': {len(cat_topics)}")
+    print(cat_topics[['id', 'name']].head(10))
 ```
 
 **Expected Output**:
 ```
-Total topics available: 114
-Active topics: 108
-Inactive topics: 6
+Total categories: 3
 
-Available Topics:
-                    id                           name                           description  is_active
-0           topic-123                Abu Dhabi Global Market  Updates on banking and financial...       True
-1           topic-456          Healthcare Compliance  Healthcare regulatory changes...            True
-2           topic-789         Environmental Standards  Environmental protection updates...        True
+Categories:
+                              name  topic_count  is_active
+Data protection and cybersecurity           54       True
+                          Finance          626       True
+                  Medical Devices           24       True
+
+Total topics available: 759
+Active topics: 759
+
+Topics in 'Data protection and cybersecurity': 54
+                                    id                                              name
+0  abc123...  Agence nationale de la sécurité des systèmes...
+1  def456...  Agencia Española de Protección de Datos
 ...
 ```
 
 **Use Cases**:
-- Exploration: Understanding what data is available
-- Topic selection: Choosing topics for detailed analysis
-- System overview: Getting a high-level view of regulatory domains
+- Exploration: Understanding what categories and topics are available
+- Category selection: Narrowing focus to a specific regulatory domain
+- System overview: Getting a high-level view of the regulatory landscape
 
 ---
 
@@ -687,14 +702,70 @@ Comparison exported to: topic_comparison.csv
 
 ---
 
+## Example 7: Category-Based Analysis
+
+**Scenario**: You want to analyze regulatory activity across an entire category (e.g., all Medical Devices topics) without specifying individual topics.
+
+**Code**:
+```python
+from carver_feeds import create_query_engine, create_data_manager
+from datetime import datetime, timedelta
+
+qe = create_query_engine()
+dm = create_data_manager()
+
+# List available categories
+categories_df = dm.get_categories_df()
+print("Available categories:")
+for _, cat in categories_df.iterrows():
+    print(f"  - {cat['name']}: {cat['topic_count']} topics")
+
+# Filter entries by category name
+print("\n--- Medical Devices Category ---")
+results = qe.filter_by_category(category_name="Medical Devices").to_dataframe()
+
+print(f"Total entries: {len(results)}")
+
+if len(results) > 0:
+    # See which topics contributed entries
+    topic_counts = results.groupby('topic_name').size().sort_values(ascending=False)
+    print(f"\nEntries per topic ({len(topic_counts)} topics):")
+    for topic, count in topic_counts.head(10).items():
+        print(f"  - {topic}: {count}")
+
+    # Chain with additional filters
+    print("\n--- Category + Date Filter ---")
+    recent = qe.chain() \
+        .filter_by_category(category_name="Medical Devices") \
+        .filter_by_date(start_date=datetime.now() - timedelta(days=30)) \
+        .to_dataframe()
+    print(f"Medical Devices entries in last 30 days: {len(recent)}")
+
+    # Chain category + topic for narrow results
+    print("\n--- Category + Topic Filter ---")
+    narrow = qe.chain() \
+        .filter_by_category(category_name="Finance") \
+        .filter_by_topic(topic_name="Abu Dhabi") \
+        .to_dataframe()
+    print(f"Finance > Abu Dhabi entries: {len(narrow)}")
+```
+
+**Use Cases**:
+- Category overview: Analyzing all topics in a regulatory domain at once
+- Cross-topic analysis: Comparing activity across topics within a category
+- Narrowing down: Using category as a first filter before topic-level queries
+
+---
+
 ## Tips for Effective Usage
 
 ### 1. Start Broad, Then Filter
 ```python
-# Start with topic filter, then add more specific filters
-qe.filter_by_topic(topic_name="Abu Dhabi") \    # Broad
-  .filter_by_date(start_date=recent_date) \   # More specific
-  .search_entries("keyword")                  # Most specific
+# Start with category or topic filter, then add more specific filters
+qe.filter_by_category(category_name="Finance") \  # Broadest
+  .filter_by_topic(topic_name="Abu Dhabi") \       # Narrower
+  .filter_by_date(start_date=recent_date) \        # More specific
+  .search_entries("keyword")                       # Most specific
 ```
 
 ### 2. Use `chain()` to Reset Queries

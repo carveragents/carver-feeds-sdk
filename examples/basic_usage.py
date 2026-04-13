@@ -2,7 +2,8 @@
 Basic Usage Example
 
 This example demonstrates basic usage of the Carver Feeds SDK:
-- Fetching topics and entries
+- Fetching categories and topics
+- Filtering topics by category
 - Working with DataFrames
 - Simple filtering
 
@@ -18,9 +19,25 @@ def main():
     print("=== Example 1: Direct API Client Usage ===")
     client = get_client()
 
+    # Fetch categories
+    categories = client.list_categories()
+    print(f"Found {len(categories)} categories")
+    for cat in categories:
+        print(f"  - {cat['name']}: {cat['topic_count']} topics")
+
+    print()
+
     # Fetch topics
     topics = client.list_topics()
-    print(f"Found {len(topics)} topics")
+    print(f"Found {len(topics)} topics (all categories)")
+
+    # Fetch topics filtered by category
+    if categories:
+        first_cat = categories[0]
+        filtered_topics = client.list_topics(category_id=first_cat['id'])
+        print(f"Found {len(filtered_topics)} topics in '{first_cat['name']}' category")
+
+    print()
     for topic in topics[:3]:  # Show first 3
         print(f"  - {topic['name']}: {topic.get('description', 'N/A')}")
 
@@ -30,11 +47,25 @@ def main():
     print("=== Example 2: DataFrame Usage ===")
     dm = create_data_manager()
 
+    # Get categories as DataFrame
+    categories_df = dm.get_categories_df()
+    print(f"Categories DataFrame shape: {categories_df.shape}")
+    print(categories_df[['id', 'name', 'topic_count']].to_string(index=False))
+
+    print()
+
     # Get topics as DataFrame
     topics_df = dm.get_topics_df()
     print(f"Topics DataFrame shape: {topics_df.shape}")
     print("\nFirst 3 topics:")
     print(topics_df[['id', 'name', 'is_active']].head(3))
+
+    # Get topics filtered by category
+    if len(categories_df) > 0:
+        first_cat_id = categories_df['id'].iloc[0]
+        first_cat_name = categories_df['name'].iloc[0]
+        filtered_topics_df = dm.get_topics_df(category_id=first_cat_id)
+        print(f"\nTopics in '{first_cat_name}': {len(filtered_topics_df)}")
 
     # Get entries for a specific topic
     if len(topics_df) > 0:

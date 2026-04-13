@@ -52,14 +52,56 @@ The API enforces rate limits. The SDK includes automatic retry logic with expone
 
 ## Endpoint Documentation
 
-### 1. List Topics
+### 1. List Categories
+
+**Endpoint**: `GET /api/v1/feeds/categories`
+
+**Description**: Fetch all regulatory categories available in the system. Categories group related topics together (e.g., "Finance", "Medical Devices", "Data Protection").
+
+**Parameters**: None
+
+**Response**:
+```json
+[
+  {
+    "id": "cat-uuid-123",
+    "name": "Finance",
+    "slug": "finance",
+    "description": "Financial services, banking, and finance-related regulatory topics",
+    "color": "#0066cc",
+    "is_active": true,
+    "topic_count": 626,
+    "organization_id": null,
+    "created_by_id": null,
+    "created_at": "2026-02-19T10:52:29.200Z",
+    "updated_at": "2026-02-19T10:52:29.200Z"
+  }
+]
+```
+
+**SDK Usage**:
+```python
+from carver_feeds import get_client
+
+client = get_client()
+
+# List all categories
+categories = client.list_categories()
+for cat in categories:
+    print(f"{cat['name']}: {cat['topic_count']} topics")
+```
+
+---
+
+### 3. List Topics
 
 **Endpoint**: `GET /api/v1/feeds/topics`
 
-**Description**: Fetch all regulatory topics available in the system.
+**Description**: Fetch all regulatory topics available in the system. Optionally filter by category.
 
 **Parameters**:
 - `details` (optional): When `true`, returns extended topic information. Defaults to `false`.
+- `category_id` (optional): UUID of a category to filter topics by. When provided, only topics belonging to that category are returned.
 
 **Response** (default, 9 fields):
 ```json
@@ -125,11 +167,17 @@ topics = client.list_topics()
 
 # Detailed topic list with extended fields
 detailed_topics = client.list_topics(details=True)
+
+# Topics filtered by category
+finance_topics = client.list_topics(category_id="cat-uuid-123")
+
+# Combine category filter with details
+detailed_finance = client.list_topics(details=True, category_id="cat-uuid-123")
 ```
 
 ---
 
-### 2. List All Entries (Paginated)
+### 4. List All Entries (Paginated)
 
 **Endpoint**: `GET /api/v1/feeds/entries/list`
 
@@ -185,7 +233,7 @@ active_entries = client.list_entries(is_active=True, fetch_all=True)
 
 ---
 
-### 3. Get Topic Entries
+### 5. Get Topic Entries
 
 **Endpoint**: `GET /api/v1/feeds/topics/{topic_id}/entries`
 
@@ -213,7 +261,7 @@ results = qe.filter_by_topic(topic_id="topic-123").to_dataframe()
 
 ---
 
-### 4. Get User Topic Subscriptions
+### 6. Get User Topic Subscriptions
 
 **Endpoint**: `GET /api/v1/core/users/{user_id}/topics/subscriptions`
 
@@ -271,7 +319,7 @@ print(subscriptions_df[['id', 'name', 'description']])
 
 ---
 
-### 5. Get Annotations
+### 7. Get Annotations
 
 **Endpoint**: `GET /api/v1/core/annotations`
 
@@ -384,6 +432,24 @@ print(f"Most common tags: {tag_counts.most_common(5)}")
 ---
 
 ## Data Schemas
+
+### Category Schema
+
+**DataFrame Columns** (from `get_categories_df()`):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | str | Unique category identifier |
+| `name` | str | Category name |
+| `slug` | str | URL-friendly slug |
+| `description` | str | Category description |
+| `color` | str | Category color code |
+| `is_active` | bool | Active status |
+| `topic_count` | int | Number of topics in category |
+| `created_at` | datetime64 | Creation timestamp |
+| `updated_at` | datetime64 | Last update timestamp |
+
+---
 
 ### Topic Schema
 
@@ -689,11 +755,30 @@ client = CarverFeedsAPIClient(
 
 **Methods**:
 
-##### `list_topics(details: bool = False) -> List[Dict]`
-Fetch all topics from the API.
+##### `list_categories() -> List[Dict]`
+Fetch all categories from the API.
+
+**Returns**: List of category dictionaries
+
+**Raises**:
+- `AuthenticationError`: Invalid API key
+- `CarverAPIError`: API request failed
+
+**Example**:
+```python
+categories = client.list_categories()
+for cat in categories:
+    print(f"{cat['name']}: {cat['topic_count']} topics")
+```
+
+---
+
+##### `list_topics(details: bool = False, category_id: str | None = None) -> List[Dict]`
+Fetch all topics from the API, optionally filtered by category.
 
 **Parameters**:
 - `details`: If True, include extended topic information (acronym, jurisdiction, sectors, industries, functions, etc.). Defaults to False.
+- `category_id`: If provided, filter topics to only those belonging to this category. Defaults to None.
 
 **Returns**: List of topic dictionaries (9 fields by default; 36 fields with `details=True`)
 
@@ -710,6 +795,9 @@ topics = client.list_topics()
 detailed = client.list_topics(details=True)
 print(detailed[0]['acronym'])  # e.g., "BOK"
 print(detailed[0]['jurisdiction_code'])  # e.g., "KR"
+
+# Topics filtered by category
+finance_topics = client.list_topics(category_id="cat-uuid-123")
 ```
 
 ---
@@ -839,15 +927,35 @@ dm = FeedsDataManager(client)
 
 **Methods**:
 
-##### `get_topics_df() -> pd.DataFrame`
-Fetch all topics as a pandas DataFrame.
+##### `get_categories_df() -> pd.DataFrame`
+Fetch all categories as a pandas DataFrame.
+
+**Returns**: DataFrame with category schema
+
+**Example**:
+```python
+categories_df = dm.get_categories_df()
+print(categories_df[['id', 'name', 'topic_count']].head())
+```
+
+---
+
+##### `get_topics_df(category_id: str | None = None) -> pd.DataFrame`
+Fetch topics as a pandas DataFrame, optionally filtered by category.
+
+**Parameters**:
+- `category_id`: If provided, filter topics to only those belonging to this category. Defaults to None.
 
 **Returns**: DataFrame with topic schema
 
 **Example**:
 ```python
+# All topics
 topics_df = dm.get_topics_df()
 print(topics_df[['id', 'name', 'is_active']].head())
+
+# Topics in a specific category
+finance_topics = dm.get_topics_df(category_id="cat-uuid-123")
 ```
 
 ---
@@ -1128,6 +1236,31 @@ results = qe.filter_by_topic(topic_name="Banking") \
 results = qe.filter_by_topic(topic_name="Banking") \
     .search_entries(["banking", "regulation"], match_all=True,
                    search_fields=['entry_title', 'entry_description']) \
+    .to_dataframe()
+```
+
+---
+
+##### `filter_by_category(category_id: Optional[str] = None, category_name: Optional[str] = None) -> EntryQueryEngine`
+Filter entries by category. Can be used as the first filter to load entries for all topics in a category.
+
+**Parameters**:
+- `category_id`: Exact category UUID match (optional)
+- `category_name`: Partial category name match, case-insensitive (optional)
+
+**Returns**: Self for method chaining
+
+**Example**:
+```python
+# Filter by category name
+results = qe.filter_by_category(category_name="Finance").to_dataframe()
+
+# Filter by category ID
+results = qe.filter_by_category(category_id="cat-uuid").to_dataframe()
+
+# Chain with topic filter
+results = qe.filter_by_category(category_name="Finance") \
+    .filter_by_topic(topic_name="Banking") \
     .to_dataframe()
 ```
 

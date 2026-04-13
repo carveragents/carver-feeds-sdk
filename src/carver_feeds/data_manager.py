@@ -57,7 +57,70 @@ class FeedsDataManager:
         self.api_client = api_client
         logger.info("FeedsDataManager initialized")
 
-    def get_topics_df(self) -> pd.DataFrame:
+    def get_categories_df(self) -> pd.DataFrame:
+        """
+        Fetch categories and return as DataFrame.
+
+        Returns a DataFrame with the following columns:
+        - id: Category ID
+        - name: Category name
+        - slug: Category slug
+        - description: Category description
+        - color: Category color
+        - is_active: Active status
+        - topic_count: Number of topics in category
+        - created_at: Creation timestamp
+        - updated_at: Last update timestamp
+
+        Returns:
+            pd.DataFrame: Categories with standardized schema
+
+        Raises:
+            CarverAPIError: If API request fails
+
+        Example:
+            >>> dm = create_data_manager()
+            >>> categories = dm.get_categories_df()
+            >>> print(f"Found {len(categories)} categories")
+            >>> print(categories[['id', 'name', 'topic_count']].head())
+        """
+        logger.info("Fetching categories as DataFrame...")
+
+        try:
+            categories_data = self.api_client.list_categories()
+
+            expected_columns = [
+                "id",
+                "name",
+                "slug",
+                "description",
+                "color",
+                "is_active",
+                "topic_count",
+                "created_at",
+                "updated_at",
+            ]
+            df = self._json_to_dataframe(categories_data, expected_columns)
+
+            date_columns = ["created_at", "updated_at"]
+            for col in date_columns:
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+
+            if "is_active" in df.columns:
+                df["is_active"] = df["is_active"].fillna(True).astype(bool)
+
+            logger.info(f"Successfully converted {len(df)} categories to DataFrame")
+            return df
+
+        except CarverAPIError as e:
+            logger.error(f"Failed to fetch categories: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error converting categories to DataFrame: {e}")
+            raise CarverAPIError(f"Data conversion failed: {e}") from e
+
+    def get_topics_df(self, category_id: str | None = None) -> pd.DataFrame:
         """
         Fetch topics and return as DataFrame.
 
@@ -68,6 +131,9 @@ class FeedsDataManager:
         - created_at: Creation timestamp
         - updated_at: Last update timestamp
         - is_active: Active status
+
+        Args:
+            category_id: Optional category ID to filter topics by category
 
         Returns:
             pd.DataFrame: Topics with standardized schema
@@ -80,12 +146,17 @@ class FeedsDataManager:
             >>> topics = dm.get_topics_df()
             >>> print(f"Found {len(topics)} topics")
             >>> print(topics[['id', 'name', 'is_active']].head())
+            >>> # Filter by category
+            >>> category_topics = dm.get_topics_df(category_id="cat-123")
         """
-        logger.info("Fetching topics as DataFrame...")
+        if category_id is not None:
+            logger.info(f"Fetching topics as DataFrame (category_id={category_id})...")
+        else:
+            logger.info("Fetching topics as DataFrame...")
 
         try:
             # Fetch data from API
-            topics_data = self.api_client.list_topics()
+            topics_data = self.api_client.list_topics(category_id=category_id)
 
             # Convert to DataFrame
             expected_columns = [

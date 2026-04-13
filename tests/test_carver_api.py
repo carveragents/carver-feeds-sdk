@@ -292,3 +292,79 @@ class TestGetAnnotations:
 # - list_topics, list_feeds, list_entries methods
 # - get_feed_entries, get_topic_entries methods
 # - Error handling and retry logic
+
+
+class TestListCategories:
+    """Tests for list_categories method."""
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_list_categories_success(self, mock_make_request, sample_categories):
+        """Test successful categories retrieval."""
+        mock_make_request.return_value = sample_categories
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.list_categories()
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["name"] == "Finance"
+        assert result[1]["name"] == "Medical Devices"
+
+        mock_make_request.assert_called_once_with(
+            "GET", "/api/v1/feeds/categories"
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_list_categories_empty(self, mock_make_request):
+        """Test list_categories with empty result."""
+        mock_make_request.return_value = []
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.list_categories()
+
+        assert result == []
+        assert isinstance(result, list)
+
+
+class TestListTopicsWithCategory:
+    """Tests for list_topics with category_id parameter."""
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_list_topics_with_category_id(self, mock_make_request, sample_topics):
+        """Test list_topics filters by category_id."""
+        mock_make_request.return_value = sample_topics
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.list_topics(category_id="cat-1")
+
+        assert isinstance(result, list)
+        mock_make_request.assert_called_once_with(
+            "GET", "/api/v1/feeds/topics", params={"category_id": "cat-1"}
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_list_topics_without_category_id(self, mock_make_request, sample_topics):
+        """Test list_topics without category_id preserves backward compatibility."""
+        mock_make_request.return_value = sample_topics
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.list_topics()
+
+        assert isinstance(result, list)
+        mock_make_request.assert_called_once_with(
+            "GET", "/api/v1/feeds/topics", params=None
+        )
+
+    @patch.object(CarverFeedsAPIClient, "_make_request")
+    def test_list_topics_with_category_id_and_details(self, mock_make_request, sample_topics):
+        """Test list_topics with both category_id and details."""
+        mock_make_request.return_value = sample_topics
+
+        client = CarverFeedsAPIClient(base_url="https://test.com", api_key="test-key")
+        result = client.list_topics(details=True, category_id="cat-1")
+
+        assert isinstance(result, list)
+        mock_make_request.assert_called_once_with(
+            "GET", "/api/v1/feeds/topics",
+            params={"details": "true", "category_id": "cat-1"}
+        )

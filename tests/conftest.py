@@ -227,3 +227,36 @@ def mock_rate_limit_response():
     response.status_code = 429
     response.text = "Rate limit exceeded"
     return response
+
+
+@pytest.fixture
+def sample_categories() -> list[dict]:
+    """Sample category data for testing."""
+    return [
+        {
+            "id": "cat-1",
+            "name": "Finance",
+            "slug": "finance",
+            "description": "Financial services and banking regulatory topics",
+            "color": "#0066cc",
+            "is_active": True,
+            "topic_count": 2,
+            "organization_id": None,
+            "created_by_id": None,
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+        },
+        {
+            "id": "cat-2",
+            "name": "Medical Devices",
+            "slug": "medical-devices",
+            "description": "Medical device regulatory topics",
+            "color": "#16a34a",
+            "is_active": True,
+            "topic_count": 1,
+            "organization_id": None,
+            "created_by_id": None,
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+        },
+    ]

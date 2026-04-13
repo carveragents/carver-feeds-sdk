@@ -242,6 +242,134 @@ class EntryQueryEngine:
 
         return self
 
+    def filter_by_category(
+        self, category_id: str | None = None, category_name: str | None = None
+    ) -> "EntryQueryEngine":
+        """
+        Filter entries by category (id or name).
+
+        At least one of category_id or category_name must be provided.
+        If both are provided, category_id takes precedence.
+
+        This method can be used as the first filter to load entries for all
+        topics belonging to a category. It can also be chained before
+        filter_by_topic() to narrow results further.
+
+        OPTIMIZED: When used as the first filter, fetches only topics belonging
+        to the specified category, then loads entries for each topic.
+
+        Args:
+            category_id: Category UUID to filter by
+            category_name: Category name to filter by (case-insensitive partial match)
+
+        Returns:
+            EntryQueryEngine: Self for method chaining
+
+        Example:
+            >>> qe = create_query_engine()
+            >>> # Filter by category ID
+            >>> results = qe.filter_by_category(category_id="cat-uuid").to_dataframe()
+            >>> # Filter by category name
+            >>> results = qe.filter_by_category(category_name="Finance").to_dataframe()
+            >>> # Chain with topic filter
+            >>> results = qe.filter_by_category(category_name="Finance") \\
+            ...     .filter_by_topic(topic_name="Banking") \\
+            ...     .to_dataframe()
+        """
+        if not category_id and not category_name:
+            logger.warning("Neither category_id nor category_name provided, no filtering applied")
+            return self
+
+        # OPTIMIZATION: If data not yet loaded, fetch only this category's topics/entries
+        if not self._initial_data_loaded:
+            # Resolve category_name to category_id if needed
+            if not category_id and category_name:
+                logger.info(f"Resolving category_name '{category_name}' to category_id...")
+                categories_df = self.data_manager.get_categories_df()
+                mask = categories_df["name"].fillna("").str.contains(
+                    category_name, case=False, na=False
+                )
+                matching = categories_df[mask]
+
+                if len(matching) == 0:
+                    logger.warning(f"No categories found matching '{category_name}'")
+                    self._results = pd.DataFrame()
+                    self._initial_data_loaded = True
+                    return self
+
+                if len(matching) > 1:
+                    logger.info(
+                        f"Multiple categories match '{category_name}': "
+                        f"{matching['name'].tolist()}, using first match"
+                    )
+
+                category_id = matching.iloc[0]["id"]
+                logger.info(f"Resolved to category_id: {category_id} ({matching.iloc[0]['name']})")
+
+            # Get topics for this category
+            logger.info(f"Loading topics for category {category_id}...")
+            topics_df = self.data_manager.get_topics_df(category_id=category_id)
+
+            if len(topics_df) == 0:
+                logger.warning(f"No topics found for category {category_id}")
+                self._results = pd.DataFrame()
+                self._initial_data_loaded = True
+                return self
+
+            # Fetch entries for each topic and combine
+            logger.info(f"Loading entries for {len(topics_df)} topics in category...")
+            all_entries = []
+            for _, topic in topics_df.iterrows():
+                topic_entries = self.data_manager.get_hierarchical_view(
+                    include_entries=True,
+                    topic_id=topic["id"],
+                    fetch_content=self._fetch_content_on_load,
+                    s3_client=self.s3_client,
+                )
+                if len(topic_entries) > 0:
+                    all_entries.append(topic_entries)
+
+            if all_entries:
+                self._results = pd.concat(all_entries, ignore_index=True)
+            else:
+                self._results = pd.DataFrame()
+
+            self._initial_data_loaded = True
+            logger.info(
+                f"Loaded {len(self._results)} entries across "
+                f"{len(topics_df)} topics in category"
+            )
+            return self
+
+
+        # Standard path: filter from already-loaded data
+        self._ensure_data_loaded()
+
+        if category_id:
+            logger.info(f"Filtering loaded data by category_id: {category_id}")
+            # Get topic IDs for this category
+            topics_df = self.data_manager.get_topics_df(category_id=category_id)
+            category_topic_ids = set(topics_df["id"].tolist())
+            self._results = self._results[self._results["topic_id"].isin(category_topic_ids)]
+        elif category_name:
+            logger.info(f"Filtering loaded data by category_name: {category_name}")
+            categories_df = self.data_manager.get_categories_df()
+            mask = categories_df["name"].fillna("").str.contains(
+                category_name, case=False, na=False
+            )
+            matching = categories_df[mask]
+            if len(matching) > 0:
+                resolved_id = matching.iloc[0]["id"]
+                topics_df = self.data_manager.get_topics_df(category_id=resolved_id)
+                category_topic_ids = set(topics_df["id"].tolist())
+                self._results = self._results[self._results["topic_id"].isin(category_topic_ids)]
+            else:
+                logger.warning(f"No categories found matching '{category_name}'")
+                self._results = pd.DataFrame()
+
+        logger.info(f"Category filter returned {len(self._results)} entries")
+        return self
+
     def filter_by_topic(
         self, topic_id: str | None = None, topic_name: str | None = None
     ) -> "EntryQueryEngine":

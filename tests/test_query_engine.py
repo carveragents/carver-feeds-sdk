@@ -220,12 +220,59 @@ class TestCreateQueryEngineWithS3:
         assert qe.s3_client is None
 
 
-# Additional tests can be added here for:
-# - filter_by_topic method
-# - filter_by_feed method
-# - filter_by_date method
-# - filter_by_active method
-# - search_entries method
-# - to_dataframe, to_dict, to_json, to_csv methods
-# - Method chaining
-# - Lazy loading behavior
+class TestFilterByCategory:
+    """Tests for filter_by_category method."""
+
+    def test_filter_by_category_id_loads_data(self, mock_api_client, sample_topics, sample_categories):
+        """Test filter_by_category with category_id loads filtered data."""
+        # Setup: categories and topics for the category.
+        # list_topics is called first with category_id (to get topics in category),
+        # then again with category_id=None inside get_hierarchical_view for each topic.
+        mock_api_client.list_topics.return_value = sample_topics
+        # get_topic_entries must return a list (iterable of entry dicts)
+        mock_api_client.get_topic_entries.return_value = []
+
+        dm = FeedsDataManager(mock_api_client)
+        qe = EntryQueryEngine(dm)
+
+        result = qe.filter_by_category(category_id="cat-1")
+
+        assert result is qe  # Returns self for chaining
+        assert qe._initial_data_loaded is True
+
+    def test_filter_by_category_name_resolves_id(self, mock_api_client, sample_topics, sample_categories):
+        """Test filter_by_category with category_name resolves to category_id."""
+        mock_api_client.list_categories.return_value = sample_categories
+        mock_api_client.list_topics.return_value = sample_topics
+        mock_api_client.get_topic_entries.return_value = []
+
+        dm = FeedsDataManager(mock_api_client)
+        qe = EntryQueryEngine(dm)
+
+        result = qe.filter_by_category(category_name="Finance")
+
+        assert result is qe
+        assert qe._initial_data_loaded is True
+
+    def test_filter_by_category_no_args_returns_self(self, mock_api_client):
+        """Test filter_by_category with no args returns self without loading data."""
+        dm = FeedsDataManager(mock_api_client)
+        qe = EntryQueryEngine(dm)
+
+        result = qe.filter_by_category()
+
+        assert result is qe
+        assert qe._initial_data_loaded is False
+
+    def test_filter_by_category_unknown_name_returns_empty(self, mock_api_client, sample_categories):
+        """Test filter_by_category with unknown name returns empty results."""
+        mock_api_client.list_categories.return_value = sample_categories
+
+        dm = FeedsDataManager(mock_api_client)
+        qe = EntryQueryEngine(dm)
+
+        result = qe.filter_by_category(category_name="NonexistentCategory")
+
+        assert result is qe
+        assert qe._initial_data_loaded is True
+        assert len(qe._results) == 0

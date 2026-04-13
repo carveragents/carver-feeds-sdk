@@ -2,6 +2,7 @@
 Advanced Query Example
 
 This example demonstrates advanced querying capabilities:
+- Filtering by category
 - Method chaining
 - Filtering by topic, date, and status
 - Keyword search (in title/description and full S3 content)
@@ -21,10 +22,26 @@ def main():
     # Create query engine
     qe = create_query_engine()
 
+    # Example 0: Filter by category
+    print("=== Example 0: Filter by Category ===")
+    category_name = "Medical Devices"
+    results = qe.filter_by_category(category_name=category_name).to_dataframe()
+    print(f"Found {len(results)} entries across all '{category_name}' topics")
+    if len(results) > 0:
+        # Show which topics are in this category
+        unique_topics = results['topic_name'].unique()
+        print(f"Topics in category: {len(unique_topics)}")
+        for t in unique_topics[:5]:
+            print(f"  - {t}")
+        print("\nSample entries:")
+        print(results[['entry_title', 'topic_name', 'entry_published_at']].head(3))
+
+    print("\n" + "="*60 + "\n")
+
     # Example 1: Filter by topic
     print("=== Example 1: Filter by Topic ===")
     topic_contains_str = "Abu Dhabi"
-    results = qe.filter_by_topic(topic_name=topic_contains_str).to_dataframe()
+    results = qe.chain().filter_by_topic(topic_name=topic_contains_str).to_dataframe()
     print(f"Found {len(results)} entries in topics containing '{topic_contains_str}'")
     if len(results) > 0:
         print("\nSample entries:")

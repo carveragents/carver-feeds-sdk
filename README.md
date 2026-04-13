@@ -61,9 +61,17 @@ load_dotenv()
 # Initialize client from environment variables
 client = get_client()
 
+# Fetch categories
+categories = client.list_categories()
+print(f"Found {len(categories)} categories")
+
 # Fetch topics
 topics = client.list_topics()
 print(f"Found {len(topics)} topics")
+
+# Fetch topics filtered by category
+finance_topics = client.list_topics(category_id="category-uuid")
+print(f"Found {len(finance_topics)} finance topics")
 
 # Fetch topics with detailed information
 detailed_topics = client.list_topics(details=True)
@@ -85,9 +93,17 @@ load_dotenv()
 # Create data manager
 dm = create_data_manager()
 
+# Get categories as DataFrame
+categories_df = dm.get_categories_df()
+print(categories_df[['id', 'name', 'topic_count']].head())
+
 # Get topics as DataFrame
 topics_df = dm.get_topics_df()
 print(topics_df[['id', 'name', 'is_active']].head())
+
+# Get topics filtered by category
+finance_topics_df = dm.get_topics_df(category_id="category-uuid")
+print(f"Found {len(finance_topics_df)} finance topics")
 
 # Get entries for a specific topic (without content)
 entries_df = dm.get_topic_entries_df(topic_id="topic-123")
@@ -110,14 +126,20 @@ load_dotenv()
 # Create query engine
 qe = create_query_engine()
 
-# Build complex query with method chaining
+# Filter by category to get all entries across a category's topics
 results = qe \
-    .filter_by_topic(topic_name="Abu Dhabi") \
+    .filter_by_category(category_name="Finance") \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .search_entries("regulation") \
     .to_dataframe()
 
 print(f"Found {len(results)} matching entries")
+
+# Or filter by specific topic within a category
+results = qe.chain() \
+    .filter_by_category(category_name="Finance") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
+    .to_dataframe()
 
 # Export results
 qe.to_csv("results.csv")
@@ -132,7 +154,7 @@ Low-level API client with comprehensive error handling:
 
 - X-API-Key authentication
 - Exponential backoff retry logic for rate limits
-- Support for topics and topic-based entry retrieval
+- Support for categories, topics, and topic-based entry retrieval
 - AI-generated annotations retrieval with filtering by entries, topics, or users
 
 ### Data Manager (`FeedsDataManager`)
@@ -140,8 +162,8 @@ Low-level API client with comprehensive error handling:
 Converts API responses to pandas DataFrames:
 
 - JSON to DataFrame conversion with schema validation
-- Hierarchical data views (topic → entry)
-- Handles topics and entries
+- Hierarchical data views (category → topic → entry)
+- Handles categories, topics, and entries
 - Content fetching capability
 
 ### Query Engine (`EntryQueryEngine`)
@@ -149,16 +171,18 @@ Converts API responses to pandas DataFrames:
 High-level query interface with fluent API:
 
 - Method chaining for complex queries
-- Filter by topic, date range, and status
+- Filter by category, topic, date range, and status
 - Keyword search with AND/OR logic across multiple fields
 - Multiple export formats (DataFrame, CSV, JSON, dict)
 - Lazy loading with automatic endpoint optimization
 
 ## 📊 Data Model
 
-The SDK works with three main entities in a hierarchical structure:
+The SDK works with four main entities in a hierarchical structure:
 
 ```
+Category (grouping of topics, e.g., "Finance", "Medical Devices")
+  ↓ 1:N
 Topic (regulatory bodies like SEC, SEBI, RBI, etc.)
   ↓ 1:N
 Entry (individual articles/entries)
@@ -167,6 +191,7 @@ Annotation (AI-generated insights and classifications)
 ```
 
 **Key Fields**:
+- **Category**: `id`, `name`, `slug`, `description`, `color`, `is_active`, `topic_count`, timestamps
 - **Topic**: `id`, `name`, `description`, `is_active`, timestamps (use `details=True` for extended fields: `acronym`, `jurisdiction_code`, `sectors`, `industries`, `functions`, and more)
 - **Entry**: `id`, `title`, `link`, `entry_content_markdown`, `description`, `published_at`, `feed_id`, `topic_id`, `content_status`, `s3_content_md_path`, `s3_content_html_path`, `is_active`, timestamps
 - **Annotation**: `scores` (impact, urgency, relevance), `classification` (update_type, regulatory_source), `metadata` (tags, impact_summary, impacted_business, critical_dates)
@@ -374,7 +399,12 @@ The query engine automatically uses optimized endpoints when you filter before l
 qe = create_query_engine()
 results = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
-# Required pattern: Always start with filter_by_topic()
+# Filter by category first, then narrow by topic
+results = qe.filter_by_category(category_name="Finance") \
+    .filter_by_topic(topic_name="Abu Dhabi") \
+    .to_dataframe()
+
+# Required pattern: Always start with filter_by_category() or filter_by_topic()
 results = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .to_dataframe()
