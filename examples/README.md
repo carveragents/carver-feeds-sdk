@@ -19,6 +19,9 @@ This directory contains example scripts and comprehensive usage documentation fo
 6. [Example 6: Multi-Topic Comparison](#example-6-multi-topic-comparison)
 7. [Example 7: Category-Based Analysis](#example-7-category-based-analysis)
 
+### Statutes
+- [Statutes Example Script](#statutes)
+
 ### Additional Resources
 - [Tips for Effective Usage](#tips-for-effective-usage)
 - [Common Workflows](#common-workflows)
@@ -122,6 +125,21 @@ Features:
 - Filtering and sorting by annotation scores
 - Tag frequency analysis
 - Advanced analytics on enriched annotation data
+
+### Statutes
+
+Demonstrates working with legal statutes:
+
+```bash
+python statutes.py
+```
+
+Features:
+- Listing statutes with no filters to browse the full catalogue
+- Fetching available filter options (jurisdictions, legal levels, document types, languages, years)
+- Filtering statutes by jurisdiction (e.g., `"US"`)
+- Fetching a specific statute by ID
+- Retrieving feed entries that reference a specific statute (via `get_statute_annotations`)
 
 ---
 

@@ -10,6 +10,7 @@ A Python SDK for the Carver Feeds API, enabling seamless access to regulatory fe
 
 - **Comprehensive API Client**: Full support for public Carver Feeds API endpoints with authentication, retry logic, and error handling
 - **AI-Powered Annotations**: Access AI-generated insights, classifications, relevance scores, and impact assessments for regulatory entries
+- **Legal Statutes**: Search and filter legal statutes by jurisdiction, legal level, document type, language, and year; retrieve feed entries linked to a statute
 - **DataFrame Integration**: Convert API responses to pandas DataFrames for easy data analysis
 - **Advanced Query Engine**: Fluent API with method chaining for building complex queries
 - **Optimized Performance**: Smart endpoint selection and caching for efficient data access
@@ -30,6 +31,7 @@ This SDK provides programmatic access to [Carver Feeds API](https://app.carverag
 - **Risk Assessment**: Analyze regulatory trends and emerging requirements affecting your business
 - **Automated Alerting**: Build systems that notify stakeholders when relevant regulations are published
 - **Research & Analysis**: Query historical regulatory data for trend analysis and reporting
+- **Legal Statute Lookup**: Search and browse legal statutes, identify which feed entries reference a specific statute
 
 ## 📦 Installation
 
@@ -156,6 +158,7 @@ Low-level API client with comprehensive error handling:
 - Exponential backoff retry logic for rate limits
 - Support for categories, topics, and topic-based entry retrieval
 - AI-generated annotations retrieval with filtering by entries, topics, or users
+- Legal statutes retrieval with filtering, single-statute lookup, and annotation linkage
 
 ### Data Manager (`FeedsDataManager`)
 
@@ -272,6 +275,50 @@ high_impact = [
 ]
 print(f"Found {len(high_impact)} high-impact entries")
 ```
+
+### Legal Statutes
+
+Search and browse legal statutes, and find feed entries that reference a specific statute:
+
+```python
+from carver_feeds import get_client
+
+client = get_client()
+
+# Discover available filter values before querying
+options = client.get_statute_filter_options()
+print(f"Jurisdictions: {', '.join(options['jurisdictions'])}")
+print(f"Legal levels:  {', '.join(options['legal_levels'])}")
+
+# List statutes — filter by jurisdiction, year, full-text search, etc.
+result = client.list_statutes(jurisdiction="US", legal_level="legislative", limit=10)
+print(f"Found {result['total']} US legislative statutes")
+for statute in result["statutes"]:
+    print(f"  {statute['canonical_name']} ({statute.get('year', 'N/A')})")
+
+# Fetch a single statute by ID
+statute = client.get_statute("statute-uuid")
+print(f"Name:     {statute['canonical_name']}")
+print(f"Citation: {statute.get('code_citation')}")
+print(f"Variants: {', '.join(statute.get('variants', []))}")
+
+# Find all feed entries that reference a specific statute
+result = client.get_statute_annotations("statute-uuid")
+print(f"Referenced in {result['total']} feed entries")
+for entry in result["feed_entries"]:
+    print(f"  - {entry['title']}: {entry['link']}")
+```
+
+**Statute filter parameters** (all optional):
+- `jurisdiction` — ISO country code (e.g., `"US"`, `"ES"`, `"AD"`)
+- `legal_level` — e.g., `"legislative"`, `"executive / administrative"`
+- `document_type` — e.g., `"law"`, `"regulation"`, `"circular"`
+- `original_language` — ISO language code (e.g., `"en"`, `"es"`)
+- `year` — four-digit calendar year
+- `search` — full-text search on statute text
+- `limit` / `offset` — pagination (default limit: 50)
+
+Use `get_statute_filter_options()` to discover the exact values accepted by each filter.
 
 ### Hierarchical Views
 
