@@ -302,20 +302,23 @@ options = client.get_statute_filter_options()
 print(f"Jurisdictions: {', '.join(options['jurisdictions'])}")
 print(f"Legal levels:  {', '.join(options['legal_levels'])}")
 
-# List statutes — filter by jurisdiction, year, full-text search, etc.
-result = client.list_statutes(jurisdiction="US", legal_level="legislative", limit=10)
-print(f"Found {result['total']} US legislative statutes")
+# List statutes — filter by jurisdiction and legal level
+result = client.list_statutes(jurisdiction="US", legal_level="primary law", limit=10)
+print(f"Found {result['total']} US primary law statutes")
 for statute in result["statutes"]:
     print(f"  {statute['canonical_name']} ({statute.get('year', 'N/A')})")
 
+# Use the first returned statute for the remaining examples
+sample_statute_id = result["statutes"][0]["id"]
+
 # Fetch a single statute by ID
-statute = client.get_statute("statute-uuid")
+statute = client.get_statute(sample_statute_id)
 print(f"Name:     {statute['canonical_name']}")
 print(f"Citation: {statute.get('code_citation')}")
 print(f"Variants: {', '.join(statute.get('variants', []))}")
 
 # Find all feed entries that reference a specific statute
-result = client.get_statute_annotations("statute-uuid")
+result = client.get_statute_annotations(sample_statute_id)
 print(f"Referenced in {result['total']} feed entries")
 for entry in result["feed_entries"]:
     print(f"  - {entry['title']}: {entry['link']}")
@@ -323,7 +326,7 @@ for entry in result["feed_entries"]:
 
 **Statute filter parameters** (all optional):
 - `jurisdiction` — ISO country code (e.g., `"US"`, `"ES"`, `"AD"`)
-- `legal_level` — e.g., `"legislative"`, `"executive / administrative"`
+- `legal_level` — e.g., `"primary law"`, `"executive / administrative"`
 - `document_type` — e.g., `"law"`, `"regulation"`, `"circular"`
 - `original_language` — ISO language code (e.g., `"en"`, `"es"`)
 - `year` — four-digit calendar year
