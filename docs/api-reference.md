@@ -1208,11 +1208,19 @@ Reset query to start fresh with all data.
 
 **Example**:
 ```python
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+
 # First query
-results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+results1 = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 
 # Reset and new query
-results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
+results2 = qe.chain().filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 ```
 
 ---
@@ -1238,25 +1246,33 @@ Search entries by keywords across specified fields.
 
 **Example**:
 ```python
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+
 # Search in title/description (no S3 required)
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries("regulation", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
 # Search in full content (requires fetch_content)
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_id=sample_topic_id) \
     .fetch_content() \
     .search_entries("regulation") \
     .to_dataframe()
 
 # Search for any of multiple keywords
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries(["banking", "finance"], match_all=False,
                    search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
 # Search for all keywords
-results = qe.filter_by_topic(topic_name="Banking") \
+results = qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries(["banking", "regulation"], match_all=True,
                    search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
@@ -1283,7 +1299,7 @@ results = qe.filter_by_category(category_id="cat-uuid").to_dataframe()
 
 # Chain with topic filter
 results = qe.filter_by_category(category_name="Finance") \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_id=sample_topic_id) \
     .to_dataframe()
 ```
 
@@ -1357,7 +1373,14 @@ Export results as pandas DataFrame.
 
 **Example**:
 ```python
-df = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+df = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 print(df[['entry_title', 'entry_published_at']].head())
 ```
 
@@ -1370,7 +1393,14 @@ Export results as list of dictionaries.
 
 **Example**:
 ```python
-entries = qe.filter_by_topic(topic_name="Banking").to_dict()
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+entries = qe.filter_by_topic(topic_id=sample_topic_id).to_dict()
 for entry in entries[:3]:
     print(f"{entry['entry_title']}: {entry['entry_link']}")
 ```
@@ -1387,8 +1417,15 @@ Export results as JSON string.
 
 **Example**:
 ```python
-json_str = qe.filter_by_topic(topic_name="Banking").to_json(indent=2)
-with open('banking_entries.json', 'w') as f:
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+json_str = qe.filter_by_topic(topic_id=sample_topic_id).to_json(indent=2)
+with open('topic_entries.json', 'w') as f:
     f.write(json_str)
 ```
 
@@ -1404,7 +1441,14 @@ Export results to CSV file.
 
 **Example**:
 ```python
-csv_path = qe.filter_by_topic(topic_name="Banking").to_csv("banking_entries.csv")
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+csv_path = qe.filter_by_topic(topic_id=sample_topic_id).to_csv("topic_entries.csv")
 print(f"Exported to {csv_path}")
 ```
 
@@ -1452,14 +1496,18 @@ print(f"Entries with content: {len(entries_with_content)}")
 ### Pattern 2: Keyword Search with Filters
 
 ```python
-from carver_feeds import create_query_engine
+from carver_feeds import get_client, create_query_engine
 from datetime import datetime
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 qe = create_query_engine()
 
 # Search with multiple filters (in title/description, no S3 required)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_id=sample_topic_id) \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .filter_by_active(is_active=True) \
     .search_entries(["regulation", "compliance"],
@@ -1473,12 +1521,16 @@ print(results[['entry_title', 'topic_name', 'entry_published_at']].head())
 ### Pattern 3: Topic-Specific Analysis
 
 ```python
-from carver_feeds import create_query_engine
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 qe = create_query_engine()
 
 # Get all entries from specific topic
-results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 
 # Analyze by date
 results['month'] = results['entry_published_at'].dt.to_period('M')
@@ -1490,20 +1542,24 @@ print(monthly_counts.tail(6))
 ### Pattern 4: Export Workflow
 
 ```python
-from carver_feeds import create_query_engine
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 qe = create_query_engine()
 
 # Filter data (search in title/description, no S3 required)
 results = qe \
-    .filter_by_topic(topic_name="Banking") \
+    .filter_by_topic(topic_id=sample_topic_id) \
     .search_entries("regulation", search_fields=['entry_title', 'entry_description'])
 
 # Export in multiple formats
 df = results.to_dataframe()
 dict_list = results.to_dict()
 json_str = results.to_json(indent=2)
-csv_path = results.to_csv("banking_regulations.csv")
+csv_path = results.to_csv("topic_regulations.csv")
 
 print(f"Exported {len(df)} entries to CSV at {csv_path}")
 ```
@@ -1511,15 +1567,18 @@ print(f"Exported {len(df)} entries to CSV at {csv_path}")
 ### Pattern 5: Multi-Topic Comparison
 
 ```python
-from carver_feeds import create_query_engine
+from carver_feeds import get_client, create_query_engine
 import pandas as pd
+
+client = get_client()
+topics = client.list_topics()
 
 qe = create_query_engine()
 
 # Get entries from multiple topics
-banking = qe.filter_by_topic(topic_name="Banking").to_dataframe()
-healthcare = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
-energy = qe.chain().filter_by_topic(topic_name="Energy").to_dataframe()
+banking = qe.filter_by_topic(topic_id=topics[0]['id']).to_dataframe()
+healthcare = qe.chain().filter_by_topic(topic_id=topics[1]['id']).to_dataframe()
+energy = qe.chain().filter_by_topic(topic_id=topics[2]['id']).to_dataframe()
 
 # Combine and analyze
 all_results = pd.concat([banking, healthcare, energy])
@@ -1625,14 +1684,18 @@ except AuthenticationError as e:
 ### Error Handling Best Practices
 
 ```python
-from carver_feeds import create_query_engine, CarverAPIError, AuthenticationError
+from carver_feeds import get_client, create_query_engine, CarverAPIError, AuthenticationError
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
 try:
+    client = get_client()
+    topics = client.list_topics()
+    sample_topic_id = topics[0]['id']
+
     qe = create_query_engine()
-    results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+    results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 
     if len(results) == 0:
         print("No results found. Try broadening search criteria.")
@@ -1684,27 +1747,39 @@ except Exception as e:
 
 2. **Lazy Loading**: Query engine loads data only when filter_by_topic is called
    ```python
+   from carver_feeds import get_client, create_query_engine
+
+   client = get_client()
+   topics = client.list_topics()
+   sample_topic_id = topics[0]['id']
+
    qe = create_query_engine()  # Fast, no API call
-   results = qe.filter_by_topic(topic_name="Banking") \
+   results = qe.filter_by_topic(topic_id=sample_topic_id) \
        .search_entries("regulation", search_fields=['entry_title']) \
        .to_dataframe()  # API call happens on filter_by_topic
    ```
 
 3. **Reuse Query Engine**: Data is cached after first load
    ```python
+   from carver_feeds import get_client, create_query_engine
+
+   client = get_client()
+   topics = client.list_topics()
+   sample_topic_id = topics[0]['id']
+
    qe = create_query_engine()
 
    # First query: loads data (~30-60s)
-   results1 = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+   results1 = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 
    # Subsequent queries: use cached data (instant)
-   results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
+   results2 = qe.chain().filter_by_topic(topic_id=sample_topic_id).to_dataframe()
    ```
 
 4. **Always Start with Topic Filter**: The query engine requires filtering by topic first
    ```python
    # Required pattern
-   results = qe.filter_by_topic(topic_name="Banking").to_dataframe()
+   results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
    ```
 
 ### Memory Considerations
