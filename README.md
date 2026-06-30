@@ -10,7 +10,6 @@ A Python SDK for the Carver Feeds API, enabling seamless access to regulatory fe
 
 - **Comprehensive API Client**: Full support for public Carver Feeds API endpoints with authentication, retry logic, and error handling
 - **AI-Powered Annotations**: Access AI-generated insights, classifications, relevance scores, and impact assessments for regulatory entries
-- **Legal Statutes**: Search and filter legal statutes by jurisdiction, legal level, document type, language, and year; retrieve feed entries linked to a statute
 - **DataFrame Integration**: Convert API responses to pandas DataFrames for easy data analysis
 - **Advanced Query Engine**: Fluent API with method chaining for building complex queries
 - **Optimized Performance**: Smart endpoint selection and caching for efficient data access
@@ -31,7 +30,6 @@ This SDK provides programmatic access to [Carver Feeds API](https://app.carverag
 - **Risk Assessment**: Analyze regulatory trends and emerging requirements affecting your business
 - **Automated Alerting**: Build systems that notify stakeholders when relevant regulations are published
 - **Research & Analysis**: Query historical regulatory data for trend analysis and reporting
-- **Legal Statute Lookup**: Search and browse legal statutes, identify which feed entries reference a specific statute
 
 ## 📦 Installation
 
@@ -182,7 +180,6 @@ Low-level API client with comprehensive error handling:
 - Exponential backoff retry logic for rate limits
 - Support for categories, topics, and topic-based entry retrieval
 - AI-generated annotations retrieval with filtering by entries, topics, or users
-- Legal statutes retrieval with filtering, single-statute lookup, and annotation linkage
 
 ### Data Manager (`FeedsDataManager`)
 
@@ -228,28 +225,36 @@ Annotation (AI-generated insights and classifications)
 ### Keyword Search
 
 ```python
+from carver_feeds import get_client, create_query_engine
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+qe = create_query_engine()
+
 # Single keyword (case-insensitive by default, searches in title/description)
-qe.filter_by_topic(topic_name="Abu Dhabi") \
+qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries("regulation", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
 # Multiple keywords with OR logic (matches ANY)
-qe.filter_by_topic(topic_name="Abu Dhabi") \
+qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries(["regulation", "compliance", "enforcement"], match_all=False,
                    search_fields=['entry_title', 'entry_description'])
 
 # Multiple keywords with AND logic (matches ALL)
-qe.filter_by_topic(topic_name="Abu Dhabi") \
+qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries(["financial", "regulation"], match_all=True,
                    search_fields=['entry_title', 'entry_description'])
 
 # Search in full content (requires fetch_content)
-qe.filter_by_topic(topic_name="Abu Dhabi") \
+qe.filter_by_topic(topic_id=sample_topic_id) \
     .fetch_content() \
     .search_entries("regulation")  # Searches in entry_content_markdown
 
 # Case-sensitive search
-qe.filter_by_topic(topic_name="Abu Dhabi") \
+qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries("SEC", case_sensitive=True, search_fields=['entry_title'])
 ```
 
@@ -268,19 +273,21 @@ from carver_feeds import get_client
 
 client = get_client()
 
-# Get annotations for specific entries
-annotations = client.get_annotations(
-    feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
-)
+# Get the first topic id dynamically
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 # Get annotations for a topic
-topic_annotations = client.get_annotations(topic_ids=["topic-uuid-1"])
+annotations = client.get_annotations(topic_ids=[sample_topic_id])
 
-# Get annotations for a user's subscriptions
-user_annotations = client.get_annotations(user_ids=["user-uuid-1"])
+# Get annotations for specific entries (use entry IDs from get_topic_entries)
+entries = client.get_topic_entries(topic_id=sample_topic_id, limit=5)
+entry_annotations = client.get_annotations(
+    feed_entry_ids=[e['id'] for e in entries]
+)
 
 # Process annotation insights
-for ann in annotations:
+for ann in annotations[:3]:
     scores = ann['annotation']['scores']
     print(f"Entry: {ann['feed_entry_id']}")
     print(f"Impact: {scores['impact']['label']} (score: {scores['impact']['score']})")
@@ -298,73 +305,6 @@ high_impact = [
     if a['annotation']['scores']['impact']['score'] > 5
 ]
 print(f"Found {len(high_impact)} high-impact entries")
-```
-
-### Legal Statutes
-
-Search and browse legal statutes, and find feed entries that reference a specific statute:
-
-```python
-from carver_feeds import get_client
-
-client = get_client()
-
-# Discover available filter values before querying
-options = client.get_statute_filter_options()
-print(f"Jurisdictions: {', '.join(options['jurisdictions'])}")
-print(f"Legal levels:  {', '.join(options['legal_levels'])}")
-
-# List statutes — filter by jurisdiction, year, full-text search, etc.
-result = client.list_statutes(jurisdiction="US", legal_level="legislative", limit=10)
-print(f"Found {result['total']} US legislative statutes")
-for statute in result["statutes"]:
-    print(f"  {statute['canonical_name']} ({statute.get('year', 'N/A')})")
-
-# Fetch a single statute by ID
-statute = client.get_statute("statute-uuid")
-print(f"Name:     {statute['canonical_name']}")
-print(f"Citation: {statute.get('code_citation')}")
-print(f"Variants: {', '.join(statute.get('variants', []))}")
-
-# Find all feed entries that reference a specific statute
-result = client.get_statute_annotations("statute-uuid")
-print(f"Referenced in {result['total']} feed entries")
-for entry in result["feed_entries"]:
-    print(f"  - {entry['title']}: {entry['link']}")
-```
-
-**Statute filter parameters** (all optional):
-- `jurisdiction` — ISO country code (e.g., `"US"`, `"ES"`, `"AD"`)
-- `legal_level` — e.g., `"legislative"`, `"executive / administrative"`
-- `document_type` — e.g., `"law"`, `"regulation"`, `"circular"`
-- `original_language` — ISO language code (e.g., `"en"`, `"es"`)
-- `year` — four-digit calendar year
-- `search` — full-text search on statute text
-- `limit` / `offset` — pagination (default limit: 50)
-
-Use `get_statute_filter_options()` to discover the exact values accepted by each filter.
-
-### Hierarchical Views
-
-Build denormalized DataFrames combining topic and entry data:
-
-```python
-from carver_feeds import create_data_manager
-
-dm = create_data_manager()
-
-# Topic metadata only (fast, no entries)
-topic_only = dm.get_hierarchical_view(topic_id="topic-123", include_entries=False)
-
-# Full hierarchy for a topic (topic + entries)
-topic_data = dm.get_hierarchical_view(topic_id="topic-123", include_entries=True)
-
-# With content fetching
-topic_with_content = dm.get_hierarchical_view(
-    topic_id="topic-123",
-    include_entries=True,
-    fetch_content=True
-)
 ```
 
 ## 📚 Documentation
@@ -466,17 +406,19 @@ carver-feeds-sdk/
 The query engine automatically uses optimized endpoints when you filter before loading data:
 
 ```python
+from carver_feeds import get_client, create_query_engine
+from datetime import datetime
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
 # Optimal: Query engine uses get_topic_entries() endpoint
 qe = create_query_engine()
-results = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
+results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 
-# Filter by category first, then narrow by topic
-results = qe.filter_by_category(category_name="Finance") \
-    .filter_by_topic(topic_name="Abu Dhabi") \
-    .to_dataframe()
-
-# Required pattern: Always start with filter_by_category() or filter_by_topic()
-results = qe.filter_by_topic(topic_name="Abu Dhabi") \
+# Required pattern: Always start with filter_by_topic()
+results = qe.filter_by_topic(topic_id=sample_topic_id) \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
     .to_dataframe()
 ```
@@ -488,9 +430,9 @@ Apply filters in order of specificity (narrowest first):
 ```python
 # Good: Narrow by topic first, then apply other filters
 results = qe \
-    .filter_by_topic(topic_name="Abu Dhabi") \
+    .filter_by_topic(topic_id=sample_topic_id) \
     .filter_by_date(start_date=datetime(2024, 1, 1)) \
-    .search_entries("regulation") \
+    .search_entries("regulation", search_fields=["entry_title"]) \
     .to_dataframe()
 ```
 
@@ -499,13 +441,17 @@ results = qe \
 Data is cached after the first load:
 
 ```python
+topics = client.list_topics()
+topic_id_1 = topics[0]['id']
+topic_id_2 = topics[1]['id']
+
 qe = create_query_engine()
 
-# First query: loads data from API (~30-60 seconds for all entries)
-results1 = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
+# First query: loads data from API
+results1 = qe.filter_by_topic(topic_id=topic_id_1).to_dataframe()
 
-# Subsequent queries: use cached data (instant)
-results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
+# Subsequent queries on same topic: use cached data (instant)
+results2 = qe.chain().filter_by_topic(topic_id=topic_id_2).to_dataframe()
 ```
 
 ### 4. Use Data Manager for Simple Queries
@@ -514,8 +460,14 @@ For simple filtering without complex logic, use the Data Manager directly:
 
 ```python
 # Faster for simple use cases
+from carver_feeds import get_client, create_data_manager
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
 dm = create_data_manager()
-entries = dm.get_topic_entries_df(topic_id='topic-123')  # Direct endpoint call
+entries = dm.get_topic_entries_df(topic_id=sample_topic_id)  # Direct endpoint call
 ```
 
 ## ⚠️ Error Handling
@@ -554,11 +506,15 @@ except CarverAPIError as e:
 
 3. **Handle errors gracefully**:
    ```python
-   from carver_feeds import create_query_engine, CarverAPIError
+   from carver_feeds import get_client, create_query_engine, CarverAPIError
 
    try:
+       client = get_client()
+       topics = client.list_topics()
+       sample_topic_id = topics[0]['id']
+
        qe = create_query_engine()
-       results = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
+       results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
 
        if len(results) == 0:
            print("No results found. Try broadening search criteria.")
@@ -569,8 +525,13 @@ except CarverAPIError as e:
 4. **Export large result sets** to CSV for external processing:
    ```python
    # For large datasets, export rather than keeping in memory
-   results = qe.filter_by_topic(topic_name="Abu Dhabi")
-   results.to_csv("abu_dhabi_entries.csv")  # Saves ~50-100 MB to disk
+   client = get_client()
+   topics = client.list_topics()
+   sample_topic_id = topics[0]['id']
+
+   qe = create_query_engine()
+   results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
+   results.to_csv("topic_entries.csv", index=False)  # Saves to disk
    ```
 
 ## 🤝 Contributing

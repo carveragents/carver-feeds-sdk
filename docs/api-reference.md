@@ -341,20 +341,38 @@ print(subscriptions_df[['id', 'name', 'description']])
   {
     "annotation": {
       "scores": {
-        "relevance": 0.95,
-        "importance": 0.87,
-        "confidence": 0.92
+        "impact":    {"label": "medium", "score": 4,   "confidence": 0.9},
+        "urgency":   {"label": "low",    "score": 0,   "confidence": 1.0},
+        "relevance": {"label": "low",    "score": 2.0, "confidence": 0.95}
       },
       "classification": {
-        "category": "regulatory_update",
-        "subcategory": "compliance",
-        "tags": ["banking", "aml", "kyc"]
+        "update_type": "trend report",
+        "regulatory_source": {
+          "name": "Abu Dhabi Department of Economic Development",
+          "division_office": "Economic Strategy Sector"
+        },
+        "metadata": {"title": "ABU DHABI Q4 2022 ECONOMIC UPDATE", "language": ["English"]}
       },
-      "summary": "New AML regulations require enhanced KYC procedures..."
+      "metadata": {
+        "tags": ["Abu Dhabi", "GDP Growth", "Banking"],
+        "impact_summary": {
+          "objective": "To provide an economic update for Abu Dhabi...",
+          "why_it_matters": "Informs stakeholders about economic conditions...",
+          "what_changed": "Reports on economic growth rates...",
+          "risk_impact": "Economic slowdown presents risks...",
+          "key_requirements": []
+        },
+        "impacted_business": {
+          "industry": ["Banking", "Oil and gas"],
+          "jurisdiction": ["Abu Dhabi"],
+          "type": ["Public sector", "Private sector"]
+        },
+        "impacted_functions": ["Risk Management", "Compliance"]
+      }
     },
     "feed_entry_id": "entry-uuid-123",
     "topic_id": "topic-uuid-456",
-    "user_id": "user-uuid-789"
+    "user_id": null
   }
 ]
 ```
@@ -364,34 +382,34 @@ print(subscriptions_df[['id', 'name', 'description']])
 from carver_feeds import get_client
 
 client = get_client()
-
-# Filter by feed entry IDs
-annotations = client.get_annotations(
-    feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
-)
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 # Filter by topic IDs
+annotations = client.get_annotations(topic_ids=[sample_topic_id])
+
+# Filter by feed entry IDs
+entries = client.get_topic_entries(topic_id=sample_topic_id, limit=5)
 annotations = client.get_annotations(
-    topic_ids=["topic-uuid-1"]
+    feed_entry_ids=[e['id'] for e in entries]
 )
 
 # Filter by user IDs
-annotations = client.get_annotations(
-    user_ids=["user-uuid-1", "user-uuid-2"]
-)
+annotations = client.get_annotations(user_ids=["user-uuid-1"])
 
 # Process annotations
 for ann in annotations:
+    scores = ann['annotation']['scores']
     print(f"Entry: {ann['feed_entry_id']}")
-    print(f"Summary: {ann['annotation']['summary']}")
-    print(f"Relevance: {ann['annotation']['scores']['relevance']:.2f}")
+    print(f"Impact: {scores['impact']['label']} (score: {scores['impact']['score']})")
+    print(f"Relevance: {scores['relevance']['label']} (score: {scores['relevance']['score']})")
 ```
 
 **Response Fields**:
 - `annotation`: Dict containing AI-generated insights
-  - `scores`: Dict with relevance, importance, confidence scores (0.0-1.0)
-  - `classification`: Dict with category, subcategory, and tags
-  - `summary`: Text summary of the entry
+  - `scores`: Dict with `impact`, `urgency`, `relevance` — each is an object with `label` (str), `score` (number), `confidence` (float)
+  - `classification`: Dict with `update_type`, `regulatory_source`, `metadata`
+  - `metadata`: Dict with `tags`, `impact_summary`, `impacted_business`, `impacted_functions`, `critical_dates`
 - `feed_entry_id`: UUID of the annotated feed entry
 - `topic_id`: UUID of the topic (present when filtered by topic/user)
 - `user_id`: UUID of the user (present when filtered by user)
@@ -428,163 +446,6 @@ for ann in annotations:
 tag_counts = Counter(all_tags)
 print(f"Most common tags: {tag_counts.most_common(5)}")
 ```
-
----
-
-## Statutes
-
-Access the statutes (legislative and regulatory reference documents) in the Carver knowledge base.
-
-### `list_statutes()`
-
-Fetch a paginated list of statutes with optional filtering.
-
-**Endpoint**: `GET /api/v1/statutes/`
-
-**Parameters**:
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `jurisdiction` | `str \| None` | `None` | Filter by jurisdiction code (e.g., `"US"`, `"EU"`, `"UK"`) |
-| `legal_level` | `str \| None` | `None` | Filter by legal level (e.g., `"legislative"`, `"regulatory"`) |
-| `document_type` | `str \| None` | `None` | Filter by document type (e.g., `"law"`, `"regulation"`, `"directive"`) |
-| `original_language` | `str \| None` | `None` | Filter by language code (e.g., `"en"`, `"es"`) |
-| `year` | `int \| None` | `None` | Filter by year of enactment |
-| `search` | `str \| None` | `None` | Full-text search query |
-| `limit` | `int` | `50` | Maximum number of statutes per page |
-| `offset` | `int` | `0` | Number of statutes to skip (for pagination) |
-
-**Returns**: `dict` with keys:
-- `statutes`: List of statute dictionaries
-- `total`: Total number of matching statutes
-- `limit`: Page size used
-- `offset`: Current offset
-
-**Example**:
-```python
-from carver_feeds import get_client
-client = get_client()
-
-# List all statutes
-result = client.list_statutes()
-print(f"Total statutes: {result['total']}")
-
-# Filter by jurisdiction and year
-us_statutes = client.list_statutes(jurisdiction="US", year=2010, limit=20)
-
-# Full-text search
-results = client.list_statutes(search="data protection", limit=10)
-```
-
----
-
-### `get_statute(statute_id)`
-
-Fetch a single statute by its unique ID.
-
-**Endpoint**: `GET /api/v1/statutes/{statute_id}`
-
-**Parameters**:
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `statute_id` | `str` | Yes | Unique statute identifier |
-
-**Returns**: Statute dictionary (see [StatuteOut Schema](#statuteout-schema) below)
-
-**Raises**: `ValueError` if `statute_id` is empty
-
-**Example**:
-```python
-statute = client.get_statute("statute-uuid-123")
-print(statute["canonical_name"])
-print(statute["jurisdiction"], statute["year"])
-```
-
----
-
-### `get_statute_filter_options()`
-
-Fetch the distinct values available for filtering statutes. Useful for building dynamic filter UIs.
-
-**Endpoint**: `GET /api/v1/statutes/filters/options`
-
-**Returns**: `dict` with keys:
-- `jurisdictions`: List of available jurisdiction codes
-- `legal_levels`: List of available legal levels
-- `document_types`: List of available document types
-- `languages`: List of available language codes
-- `years`: List of available enactment years
-
-**Example**:
-```python
-options = client.get_statute_filter_options()
-print(options["jurisdictions"])   # ["US", "EU", "UK", "ES", ...]
-print(options["document_types"])  # ["law", "regulation", "directive", ...]
-```
-
----
-
-### `get_statute_annotations(statute_id, limit=100, offset=0)`
-
-Fetch feed entry annotations linked to a specific statute.
-
-**Endpoint**: `GET /api/v1/statutes/{statute_id}/annotations`
-
-**Parameters**:
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `statute_id` | `str` | — (required) | Unique statute identifier |
-| `limit` | `int` | `100` | Maximum number of feed entries per page |
-| `offset` | `int` | `0` | Number of entries to skip (for pagination) |
-
-**Returns**: `dict` with keys:
-- `statute_id`: UUID of the statute
-- `statute_name`: Canonical name of the statute
-- `feed_entries`: List of related feed entry dictionaries (each may contain an `annotation` field)
-- `total`: Total number of related feed entries
-
-**Raises**: `ValueError` if `statute_id` is empty
-
-**Example**:
-```python
-result = client.get_statute_annotations("statute-uuid-123")
-print(f"Statute: {result['statute_name']}")
-print(f"Related entries: {result['total']}")
-
-for entry in result["feed_entries"]:
-    print(f"  - {entry['title']}")
-    ann = entry.get("annotation", {})
-    if ann.get("summary"):
-        print(f"    Summary: {ann['summary']}")
-
-# Paginate through large result sets
-page2 = client.get_statute_annotations("statute-uuid-123", limit=50, offset=50)
-```
-
----
-
-### StatuteOut Schema
-
-Fields returned by `get_statute()` and items inside `list_statutes()["statutes"]`:
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | `str` | Unique identifier (UUID) |
-| `grouping_key` | `str` | Stable slug used to group statute variants |
-| `canonical_name` | `str` | Official name of the statute |
-| `jurisdiction` | `str` | Jurisdiction code (e.g., `"US"`, `"EU"`) |
-| `legal_level` | `str` | Legal level (e.g., `"legislative"`, `"regulatory"`) |
-| `document_type` | `str` | Document type (e.g., `"law"`, `"regulation"`) |
-| `original_language` | `str` | ISO 639-1 language code (e.g., `"en"`) |
-| `parent_law` | `str \| None` | ID of the parent law, if applicable |
-| `code_citation` | `str \| None` | Official citation (e.g., `"Pub.L. 111-203"`) |
-| `year` | `int \| None` | Year of enactment |
-| `variants` | `list[str]` | Alternative or colloquial names |
-| `chunk_text` | `str \| None` | Excerpt of the statute text |
-| `created_at` | `str` | ISO 8601 creation timestamp |
-| `updated_at` | `str` | ISO 8601 last-updated timestamp |
 
 ---
 
@@ -1022,28 +883,33 @@ Retrieve annotations filtered by specific criteria.
 from carver_feeds import get_client
 
 client = get_client()
-
-# Filter by feed entry IDs
-annotations = client.get_annotations(
-    feed_entry_ids=["entry-uuid-1", "entry-uuid-2"]
-)
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 # Filter by topic IDs
-annotations = client.get_annotations(topic_ids=["topic-uuid-1"])
+annotations = client.get_annotations(topic_ids=[sample_topic_id])
+
+# Filter by feed entry IDs
+entries = client.get_topic_entries(topic_id=sample_topic_id, limit=5)
+annotations = client.get_annotations(
+    feed_entry_ids=[e['id'] for e in entries]
+)
 
 # Filter by user IDs
 annotations = client.get_annotations(user_ids=["user-uuid-1"])
 
 # Process results
 for ann in annotations:
+    scores = ann['annotation']['scores']
     print(f"Entry: {ann['feed_entry_id']}")
-    print(f"Summary: {ann['annotation']['summary']}")
-    print(f"Relevance: {ann['annotation']['scores']['relevance']:.2f}")
+    print(f"Impact: {scores['impact']['label']} (score: {scores['impact']['score']})")
+    print(f"Urgency: {scores['urgency']['label']}")
+    print(f"Relevance: {scores['relevance']['label']} (score: {scores['relevance']['score']})")
 
-# Filter by importance score
-high_importance = [
+# Filter by high impact score
+high_impact = [
     a for a in annotations
-    if a['annotation']['scores']['importance'] > 0.8
+    if a['annotation']['scores']['impact']['score'] > 5
 ]
 ```
 
@@ -1665,19 +1531,23 @@ print(topic_counts)
 ### Pattern 6: Optimized Large Query
 
 ```python
-from carver_feeds import create_data_manager
+from carver_feeds import get_client, create_data_manager
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 dm = create_data_manager()
 
 # Filter by topic for optimized endpoint
-entries = dm.get_topic_entries_df(topic_id="topic-123")  # Fast, optimized endpoint
+entries = dm.get_topic_entries_df(topic_id=sample_topic_id)  # Fast, optimized endpoint
 
 # Then do analysis on filtered data
 print(f"Loaded {len(entries)} entries for topic")
 
 # Note: In v0.2.0+, entry_content_markdown requires S3 fetch
 # Use fetch_content=True to enable content search
-entries_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
+entries_with_content = dm.get_topic_entries_df(topic_id=sample_topic_id, fetch_content=True)
 keyword_matches = entries_with_content[
     entries_with_content['entry_content_markdown'].str.contains("regulation", case=False, na=False)
 ]
@@ -1687,13 +1557,17 @@ print(f"Found {len(keyword_matches)} matching entries")
 ### Pattern 7: Lazy vs Eager Content Loading (v0.2.0+)
 
 ```python
-from carver_feeds import create_data_manager, get_s3_client
+from carver_feeds import get_client, create_data_manager, get_s3_client
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 dm = create_data_manager()
 s3_client = get_s3_client()
 
 # Lazy loading: Fetch metadata first, content only when needed
-entries = dm.get_topic_entries_df(topic_id="topic-123")  # Fast, no S3 fetch
+entries = dm.get_topic_entries_df(topic_id=sample_topic_id)  # Fast, no S3 fetch
 print(f"Found {len(entries)} entries")
 
 # Filter based on metadata (title, description, dates)
@@ -1710,7 +1584,7 @@ if s3_client and len(recent_entries) > 0:
     print(f"Fetched content for {len(recent_entries)} entries")
 
 # Alternative: Fetch all content upfront (easier but slower)
-all_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
+all_with_content = dm.get_topic_entries_df(topic_id=sample_topic_id, fetch_content=True)
 ```
 
 ---

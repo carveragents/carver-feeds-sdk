@@ -19,9 +19,6 @@ This directory contains example scripts and comprehensive usage documentation fo
 6. [Example 6: Multi-Topic Comparison](#example-6-multi-topic-comparison)
 7. [Example 7: Category-Based Analysis](#example-7-category-based-analysis)
 
-### Statutes
-- [Statutes Example Script](#statutes)
-
 ### Additional Resources
 - [Tips for Effective Usage](#tips-for-effective-usage)
 - [Common Workflows](#common-workflows)
@@ -125,21 +122,6 @@ Features:
 - Filtering and sorting by annotation scores
 - Tag frequency analysis
 - Advanced analytics on enriched annotation data
-
-### Statutes
-
-Demonstrates working with legal statutes:
-
-```bash
-python statutes.py
-```
-
-Features:
-- Listing statutes with no filters to browse the full catalogue
-- Fetching available filter options (jurisdictions, legal levels, document types, languages, years)
-- Filtering statutes by jurisdiction (e.g., `"US"`)
-- Fetching a specific statute by ID
-- Retrieving feed entries that reference a specific statute (via `get_statute_annotations`)
 
 ---
 
@@ -720,15 +702,16 @@ Comparison exported to: topic_comparison.csv
 
 ---
 
-## Example 7: Category-Based Analysis
+## Example 7: Category and Topic Discovery
 
-**Scenario**: You want to analyze regulatory activity across an entire category (e.g., all Medical Devices topics) without specifying individual topics.
+**Scenario**: You want to explore available categories, discover topics within a category, and then query entries for specific topics.
 
 **Code**:
 ```python
-from carver_feeds import create_query_engine, create_data_manager
+from carver_feeds import get_client, create_query_engine, create_data_manager
 from datetime import datetime, timedelta
 
+client = get_client()
 qe = create_query_engine()
 dm = create_data_manager()
 
@@ -738,52 +721,47 @@ print("Available categories:")
 for _, cat in categories_df.iterrows():
     print(f"  - {cat['name']}: {cat['topic_count']} topics")
 
-# Filter entries by category name
-print("\n--- Medical Devices Category ---")
-results = qe.filter_by_category(category_name="Medical Devices").to_dataframe()
+# Discover topics within a specific category
+first_cat = categories_df.iloc[0]
+print(f"\n--- Topics in '{first_cat['name']}' ---")
+cat_topics = dm.get_topics_df(category_id=first_cat['id'])
+print(f"Found {len(cat_topics)} topics")
+for _, topic in cat_topics.head(5).iterrows():
+    print(f"  - {topic['name']}")
 
-print(f"Total entries: {len(results)}")
+# Query entries for the first topic in the category
+if len(cat_topics) > 0:
+    sample_topic_id = cat_topics.iloc[0]['id']
+    sample_topic_name = cat_topics.iloc[0]['name']
 
-if len(results) > 0:
-    # See which topics contributed entries
-    topic_counts = results.groupby('topic_name').size().sort_values(ascending=False)
-    print(f"\nEntries per topic ({len(topic_counts)} topics):")
-    for topic, count in topic_counts.head(10).items():
-        print(f"  - {topic}: {count}")
+    print(f"\n--- Entries for '{sample_topic_name}' ---")
+    results = qe.filter_by_topic(topic_id=sample_topic_id).to_dataframe()
+    print(f"Total entries: {len(results)}")
 
-    # Chain with additional filters
-    print("\n--- Category + Date Filter ---")
+    # Chain with date filter
+    print("\n--- Topic + Date Filter ---")
     recent = qe.chain() \
-        .filter_by_category(category_name="Medical Devices") \
+        .filter_by_topic(topic_id=sample_topic_id) \
         .filter_by_date(start_date=datetime.now() - timedelta(days=30)) \
         .to_dataframe()
-    print(f"Medical Devices entries in last 30 days: {len(recent)}")
-
-    # Chain category + topic for narrow results
-    print("\n--- Category + Topic Filter ---")
-    narrow = qe.chain() \
-        .filter_by_category(category_name="Finance") \
-        .filter_by_topic(topic_name="Abu Dhabi") \
-        .to_dataframe()
-    print(f"Finance > Abu Dhabi entries: {len(narrow)}")
+    print(f"Entries in last 30 days: {len(recent)}")
 ```
 
 **Use Cases**:
-- Category overview: Analyzing all topics in a regulatory domain at once
-- Cross-topic analysis: Comparing activity across topics within a category
-- Narrowing down: Using category as a first filter before topic-level queries
+- Category discovery: Exploring what topics exist in a regulatory domain
+- Topic selection: Finding the right topic ID before querying entries
+- Narrowing down: Using categories to find topics, then querying by topic ID
 
 ---
 
 ## Tips for Effective Usage
 
-### 1. Start Broad, Then Filter
+### 1. Start with a Topic Filter, Then Add More Filters
 ```python
-# Start with category or topic filter, then add more specific filters
-qe.filter_by_category(category_name="Finance") \  # Broadest
-  .filter_by_topic(topic_name="Abu Dhabi") \       # Narrower
+# Always start with filter_by_topic(), then chain more specific filters
+qe.filter_by_topic(topic_id=sample_topic_id) \   # Start here
   .filter_by_date(start_date=recent_date) \        # More specific
-  .search_entries("keyword")                       # Most specific
+  .search_entries("keyword", search_fields=['entry_title', 'entry_description'])  # Most specific
 ```
 
 ### 2. Use `chain()` to Reset Queries
