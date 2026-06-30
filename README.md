@@ -63,10 +63,6 @@ load_dotenv()
 # Initialize client from environment variables
 client = get_client()
 
-# Fetch categories
-categories = client.list_categories()
-print(f"Found {len(categories)} categories")
-
 # Fetch topics
 topics = client.list_topics()
 print(f"Found {len(topics)} topics")
@@ -80,8 +76,8 @@ detailed_topics = client.list_topics(details=True)
 print(f"First topic acronym: {detailed_topics[0].get('acronym')}")
 
 # Fetch entries for a specific topic
-entries = client.get_topic_entries(topic_id="topic-123")
-print(f"Found {len(entries)} entries")
+entries = client.get_topic_entries(topic_id=topics[0]['id'])
+print(f"Found {len(entries)} entries for {topics[0]['name']}")
 ```
 
 ### 3. Using DataFrames
