@@ -124,6 +124,7 @@ print(f"Fetched content for {len(entries_with_content)} entries")
 ### 4. Advanced Querying
 
 ```python
+import json
 from dotenv import load_dotenv
 from carver_feeds import create_query_engine
 from datetime import datetime
@@ -137,9 +138,18 @@ qe = create_query_engine()
 from carver_feeds import get_client
 client = get_client()
 topics = client.list_topics()
-sample_topic_id = topics[0]['id']
+sample_topic = topics[0]
+
+#print("Sample topic")
+#print(json.dumps(sample_topic, indent=4))
+
+sample_topic_id = sample_topic['id']
+
+print(f"Sample Topic: {sample_topic['name']}")
+print(f"{sample_topic['description']}")
 
 # Filter entries for a topic, narrow by date, then search by title keyword
+print("Search entries since 2025-01-01 for balance")
 results = (qe
     .filter_by_topic(topic_id=sample_topic_id)
     .filter_by_date(start_date=datetime(2025, 1, 1))
@@ -147,6 +157,7 @@ results = (qe
     .to_dataframe())
 
 print(f"Found {len(results)} matching entries")
+
 print(results[["entry_title", "entry_published_at"]].head(3))
 
 # Start a fresh chain on the same engine
@@ -155,9 +166,10 @@ results = (qe.chain()
     .filter_by_active(is_active=True)
     .to_dataframe())
 
+print("Store the active entries in result.json")
+
 # Export results
-results.to_csv("results.csv", index=False)
-results.to_json("results.json", orient="records")
+results.to_json("results.json", orient="records", indent=4)
 ```
 
 ## 🏗️ Core Components
