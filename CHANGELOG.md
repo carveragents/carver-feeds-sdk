@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-06-30
+
+### Added
+- `get_topic_detail(topic_id)` — fetch full details for a single topic via `GET /api/v1/feeds/topics/{topic_id}/detail`, returning tags, categories, jurisdiction, acronym, sectors, legal instruments, and all annotation fields
+
+### Fixed
+- `list_categories()` now auto-paginates to return all categories instead of being silently capped at the server's default page size of 50
+- `list_topics()` now raises `CarverAPIError` on unexpected response shape instead of returning silently
+
+### Changed
+- `_make_request` return type broadened to `dict[str, Any] | list[Any]` to accurately reflect list-returning endpoints
+
 ## [0.3.0] - 2026-01-15
 
 ### Added
