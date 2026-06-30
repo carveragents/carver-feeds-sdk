@@ -267,11 +267,16 @@ for idx, row in results.head(2).iterrows():
 
 **Variation - Multiple Topics**:
 ```python
+from carver_feeds import get_client
+
+client = get_client()
+topics = client.list_topics()
+
 # Search across multiple topics
 abu_dhabi_results = qe.filter_by_topic(topic_name="Abu Dhabi") \
     .search_entries("compliance", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
-healthcare_results = qe.chain().filter_by_topic(topic_name="Healthcare") \
+healthcare_results = qe.chain().filter_by_topic(topic_id=topics[1]['id']) \
     .search_entries("compliance", search_fields=['entry_title', 'entry_description']) \
     .to_dataframe()
 
@@ -279,7 +284,7 @@ import pandas as pd
 all_results = pd.concat([abu_dhabi_results, healthcare_results])
 
 print(f"Total compliance mentions: {len(all_results)}")
-print(f"Abu Dhabi: {len(abu_dhabi_results)}, Healthcare: {len(healthcare_results)}")
+print(f"Abu Dhabi: {len(abu_dhabi_results)}, Topic 2: {len(healthcare_results)}")
 ```
 
 ---
@@ -388,14 +393,18 @@ print(f"Found {len(results)} entries (OR logic - broader results)")
 
 **Code**:
 ```python
-from carver_feeds import create_query_engine
+from carver_feeds import get_client, create_query_engine
 import json
+
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
 
 qe = create_query_engine()
 
 # Perform search (in title/description, no S3 required)
-print("Searching for healthcare compliance entries...")
-qe.filter_by_topic(topic_name="Healthcare") \
+print("Searching for compliance entries...")
+qe.filter_by_topic(topic_id=sample_topic_id) \
     .search_entries("compliance", search_fields=['entry_title', 'entry_description'])
 
 # Export Format 1: Pandas DataFrame (for further Python analysis)
@@ -409,7 +418,7 @@ print(f"   - Date range: {df['entry_published_at'].min()} to {df['entry_publishe
 print(f"   - Topics: {df['topic_name'].unique()}")
 
 # Export Format 2: CSV (for Excel, spreadsheets)
-csv_path = qe.to_csv("healthcare_compliance.csv")
+csv_path = qe.to_csv("topic_compliance.csv")
 print(f"\n2. CSV file: {csv_path}")
 print(f"   Use case: Open in Excel, Google Sheets")
 
@@ -419,9 +428,9 @@ print(f"\n3. JSON string: {len(json_str)} characters")
 print(f"   Use case: API responses, web apps")
 
 # Save JSON to file
-with open('healthcare_compliance.json', 'w') as f:
+with open('topic_compliance.json', 'w') as f:
     f.write(json_str)
-print(f"   Saved to: healthcare_compliance.json")
+print(f"   Saved to: topic_compliance.json")
 
 # Export Format 4: Dictionary list (for iteration, custom processing)
 dict_list = qe.to_dict()
@@ -435,28 +444,28 @@ for entry in dict_list[:3]:
 # Export Format 5: Custom filtered columns to CSV
 # Select only specific columns
 df_minimal = df[['entry_title', 'entry_link', 'entry_published_at', 'topic_name']]
-df_minimal.to_csv('healthcare_compliance_minimal.csv', index=False)
-print(f"\n5. Minimal CSV: healthcare_compliance_minimal.csv")
+df_minimal.to_csv('topic_compliance_minimal.csv', index=False)
+print(f"\n5. Minimal CSV: topic_compliance_minimal.csv")
 print(f"   Columns: {', '.join(df_minimal.columns)}")
 ```
 
 **Expected Output**:
 ```
-Searching for healthcare compliance entries...
+Searching for compliance entries...
 
 1. DataFrame: 156 rows × 23 columns
    Columns: topic_id, topic_name, topic_description, entry_id, entry_title...
 
    Sample analysis:
    - Date range: 2024-01-05 08:30:00 to 2024-10-24 16:45:00
-   - Topics: ['Healthcare Compliance' 'Medical Devices' 'FDA Regulations']
+   - Topics: ['Banking Compliance' 'Medical Devices' 'FDA Regulations']
 
-2. CSV file: /Users/username/healthcare_compliance.csv
+2. CSV file: /Users/username/topic_compliance.csv
    Use case: Open in Excel, Google Sheets
 
 3. JSON string: 245678 characters
    Use case: API responses, web apps
-   Saved to: healthcare_compliance.json
+   Saved to: topic_compliance.json
 
 4. Dictionary list: 156 entries
    Use case: Custom processing, iteration
@@ -464,7 +473,7 @@ Searching for healthcare compliance entries...
    - CMS Updates Medicare Compliance Requirements: https://www.cms.gov/newsroom/2024/145
    - HHS Announces HIPAA Compliance Enforcement Changes: https://www.hhs.gov/about/news/2024/178
 
-5. Minimal CSV: healthcare_compliance_minimal.csv
+5. Minimal CSV: topic_compliance_minimal.csv
    Columns: entry_title, entry_link, entry_published_at, topic_name
 ```
 
@@ -590,14 +599,17 @@ Yearly Summary:
 
 **Code**:
 ```python
-from carver_feeds import create_query_engine
+from carver_feeds import get_client, create_query_engine
 from datetime import datetime, timedelta
 import pandas as pd
 
-qe = create_query_engine()
+client = get_client()
+topics = client.list_topics()
 
-# Topics to compare
-topics_to_compare = ["Abu Dhabi", "Healthcare", "Energy", "Technology", "Environment"]
+# Topics to compare: use the first 5 topics from the live system
+topics_to_compare = topics[:5]
+
+qe = create_query_engine()
 
 # Date range: last 6 months
 six_months_ago = datetime.now() - timedelta(days=180)
@@ -608,26 +620,29 @@ print("="*70)
 comparison_data = []
 
 for topic in topics_to_compare:
+    topic_id = topic['id']
+    topic_name = topic['name']
+
     # Get recent entries for this topic
     results = qe.chain() \
-        .filter_by_topic(topic_name=topic) \
+        .filter_by_topic(topic_id=topic_id) \
         .filter_by_active(is_active=True) \
         .filter_by_date(start_date=six_months_ago) \
         .to_dataframe()
 
     if len(results) > 0:
         comparison_data.append({
-            'Topic': topic,
+            'Topic': topic_name,
             'Total Entries': len(results),
             'Date Range': f"{results['entry_published_at'].min().date()} to {results['entry_published_at'].max().date()}",
             'Avg Entries/Day': round(len(results) / 180, 2)
         })
 
-        print(f"\n{topic}:")
+        print(f"\n{topic_name}:")
         print(f"  Entries: {len(results)}")
         print(f"  Avg per day: {round(len(results) / 180, 2)}")
     else:
-        print(f"\n{topic}: No data found")
+        print(f"\n{topic_name}: No data found")
 
 # Create comparison DataFrame
 if comparison_data:
@@ -648,48 +663,48 @@ if comparison_data:
     print(f"\nComparison exported to: topic_comparison.csv")
 ```
 
-**Expected Output**:
+**Expected Output** (topic names will vary based on the live system):
 ```
 Regulatory Activity Comparison (Last 6 Months)
 ======================================================================
 
-Abu Dhabi:
+Abu Dhabi Global Market:
   Entries: 487
   Avg per day: 2.71
 
-Healthcare:
+Reserve Bank of India:
   Entries: 356
   Avg per day: 1.98
 
-Energy:
+European Central Bank:
   Entries: 234
   Avg per day: 1.3
 
-Technology:
+Bank of England:
   Entries: 189
   Avg per day: 1.05
 
-Environment:
+Financial Conduct Authority:
   Entries: 412
   Avg per day: 2.29
 
 ======================================================================
 
 Summary Table:
-        Topic  Total Entries               Date Range  Avg Entries/Day
-    Abu Dhabi            487  2024-04-25 to 2024-10-24             2.71
-   Healthcare            356  2024-04-26 to 2024-10-24             1.98
-       Energy            234  2024-04-27 to 2024-10-23             1.30
-   Technology            189  2024-04-28 to 2024-10-22             1.05
-  Environment            412  2024-04-25 to 2024-10-24             2.29
+                      Topic  Total Entries               Date Range  Avg Entries/Day
+       Abu Dhabi Global Market            487  2024-04-25 to 2024-10-24             2.71
+          Reserve Bank of India            356  2024-04-26 to 2024-10-24             1.98
+        European Central Bank            234  2024-04-27 to 2024-10-23             1.30
+              Bank of England            189  2024-04-28 to 2024-10-22             1.05
+  Financial Conduct Authority            412  2024-04-25 to 2024-10-24             2.29
 
 
 Topics by Activity (Most Active First):
-  Abu Dhabi: 487 entries (2.71 per day)
-  Environment: 412 entries (2.29 per day)
-  Healthcare: 356 entries (1.98 per day)
-  Energy: 234 entries (1.3 per day)
-  Technology: 189 entries (1.05 per day)
+  Abu Dhabi Global Market: 487 entries (2.71 per day)
+  Financial Conduct Authority: 412 entries (2.29 per day)
+  Reserve Bank of India: 356 entries (1.98 per day)
+  European Central Bank: 234 entries (1.3 per day)
+  Bank of England: 189 entries (1.05 per day)
 
 Comparison exported to: topic_comparison.csv
 ```
@@ -766,11 +781,16 @@ qe.filter_by_topic(topic_id=sample_topic_id) \   # Start here
 
 ### 2. Use `chain()` to Reset Queries
 ```python
+from carver_feeds import get_client
+
+client = get_client()
+topics = client.list_topics()
+
 # First query
 results1 = qe.filter_by_topic(topic_name="Abu Dhabi").to_dataframe()
 
 # Reset and start new query
-results2 = qe.chain().filter_by_topic(topic_name="Healthcare").to_dataframe()
+results2 = qe.chain().filter_by_topic(topic_id=topics[1]['id']).to_dataframe()
 ```
 
 ### 3. Check Result Counts Before Processing
