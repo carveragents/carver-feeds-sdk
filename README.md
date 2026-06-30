@@ -103,17 +103,14 @@ print(categories_df[['id', 'name', 'topic_count']].head())
 topics_df = dm.get_topics_df()
 print(topics_df[['id', 'name', 'is_active']].head())
 
-# Get topics filtered by category
-finance_topics_df = dm.get_topics_df(category_id="category-uuid")
+# Get topics filtered by category (Finance)
+finance_topics_df = dm.get_topics_df(category_id="57bb3aa9-44a8-4a84-9585-1d4067e75888")
 print(f"Found {len(finance_topics_df)} finance topics")
 
-# Get entries for a specific topic (without content)
-entries_df = dm.get_topic_entries_df(topic_id="topic-123")
+# Get entries for a specific topic (BOK)
+entries_df = dm.get_topic_entries_df(topic_id="3ad72781-0587-4468-b0ed-966886e8bbe4")
 print(f"Found {len(entries_df)} entries")
-
-# Get entries with content
-entries_with_content = dm.get_topic_entries_df(topic_id="topic-123", fetch_content=True)
-print(f"Fetched content for {len(entries_with_content)} entries")
+print(entries_df[['id', 'title', 'published_at']].head(3))
 ```
 
 ### 4. Advanced Querying
@@ -128,24 +125,25 @@ load_dotenv()
 # Create query engine
 qe = create_query_engine()
 
-# Filter by category to get all entries across a category's topics
-results = qe \
-    .filter_by_category(category_name="Finance") \
-    .filter_by_date(start_date=datetime(2024, 1, 1)) \
-    .search_entries("regulation") \
-    .to_dataframe()
+# Filter entries for a topic, narrow by date, then search by title keyword (BOK)
+results = (qe
+    .filter_by_topic(topic_id="3ad72781-0587-4468-b0ed-966886e8bbe4")
+    .filter_by_date(start_date=datetime(2025, 1, 1))
+    .search_entries("balance", search_fields=["entry_title"])
+    .to_dataframe())
 
 print(f"Found {len(results)} matching entries")
+print(results[["entry_title", "entry_published_at"]].head(3))
 
-# Or filter by specific topic within a category
-results = qe.chain() \
-    .filter_by_category(category_name="Finance") \
-    .filter_by_topic(topic_name="Abu Dhabi") \
-    .to_dataframe()
+# Start a fresh chain on the same engine
+results = (qe.chain()
+    .filter_by_topic(topic_id="3ad72781-0587-4468-b0ed-966886e8bbe4")
+    .filter_by_active(is_active=True)
+    .to_dataframe())
 
 # Export results
-qe.to_csv("results.csv")
-qe.to_json("results.json")
+results.to_csv("results.csv", index=False)
+results.to_json("results.json", orient="records")
 ```
 
 ## 🏗️ Core Components
