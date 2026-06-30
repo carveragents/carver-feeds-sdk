@@ -113,7 +113,7 @@ class CarverFeedsAPIClient:
         endpoint: str,
         params: dict[str, Any] | None = None,
         retry_count: int = 0,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | list[Any]:
         """
         Make HTTP request with retry logic and error handling.
 
@@ -124,7 +124,7 @@ class CarverFeedsAPIClient:
             retry_count: Current retry attempt number
 
         Returns:
-            JSON response as dictionary
+            JSON response as dictionary or list
 
         Raises:
             AuthenticationError: When authentication fails (401)
@@ -221,6 +221,9 @@ class CarverFeedsAPIClient:
         """
         Fetch all categories from /api/v1/feeds/categories.
 
+        Fetches all pages automatically; may issue multiple HTTP requests
+        if the total number of categories exceeds DEFAULT_PAGE_LIMIT.
+
         Returns:
             List of category dictionaries
 
@@ -231,7 +234,24 @@ class CarverFeedsAPIClient:
             >>> print(f"Found {len(categories)} categories")
         """
         logger.info("Fetching categories...")
-        return self._make_request("GET", "/api/v1/feeds/categories")
+        all_categories: list[dict] = []
+        page = 1
+        while True:
+            result = self._make_request(
+                "GET",
+                "/api/v1/feeds/categories",
+                params={"page": page, "page_size": DEFAULT_PAGE_LIMIT},
+            )
+            if not isinstance(result, list):
+                raise CarverAPIError(
+                    f"Unexpected response format from categories endpoint. "
+                    f"Expected list, got {type(result).__name__}"
+                )
+            all_categories.extend(result)
+            if len(result) < DEFAULT_PAGE_LIMIT:
+                break
+            page += 1
+        return all_categories
 
     def list_topics(self, details: bool = False, category_id: str | None = None) -> list[dict]:
         """
@@ -262,7 +282,50 @@ class CarverFeedsAPIClient:
                 params["details"] = "true"
             if category_id is not None:
                 params["category_id"] = category_id
-        return self._make_request("GET", "/api/v1/feeds/topics", params=params)
+        response = self._make_request("GET", "/api/v1/feeds/topics", params=params)
+        if not isinstance(response, list):
+            raise CarverAPIError(
+                f"Unexpected response format from topics endpoint. "
+                f"Expected list, got {type(response).__name__}"
+            )
+        return response
+
+    def get_topic_detail(self, topic_id: str) -> dict[str, Any]:
+        """
+        Fetch full details for a single topic from /api/v1/feeds/topics/{topic_id}/detail.
+
+        Returns all annotation fields, tags, and categories for the topic.
+
+        Args:
+            topic_id: Topic identifier (required)
+
+        Returns:
+            Topic dictionary with full details including tags, categories, jurisdiction,
+            govt_body, acronym, sectors, industries, legal_instruments, etc.
+
+        Raises:
+            ValueError: If topic_id is not provided
+            CarverAPIError: If the response format is unexpected
+
+        Example:
+            >>> from carver_feeds import get_client
+            >>> client = get_client()
+            >>> topic = client.get_topic_detail("topic-uuid-123")
+            >>> print(topic["name"], topic["acronym"])
+            >>> print(topic["categories"])
+        """
+        if not topic_id:
+            raise ValueError("topic_id is required")
+
+        logger.info(f"Fetching topic {topic_id} detail...")
+        response = self._make_request("GET", f"/api/v1/feeds/topics/{topic_id}/detail")
+
+        if not isinstance(response, dict):
+            raise CarverAPIError(
+                f"Unexpected response format. Expected dict, got {type(response).__name__}"
+            )
+
+        return response
 
     def get_topic_entries(self, topic_id: str, limit: int = DEFAULT_PAGE_LIMIT) -> list[dict]:
         """
