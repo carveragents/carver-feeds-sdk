@@ -55,6 +55,7 @@ CARVER_BASE_URL=https://app.carveragents.ai  # optional
 
 ```python
 
+import json
 from dotenv import load_dotenv
 from carver_feeds import get_client
 
@@ -63,25 +64,34 @@ load_dotenv()
 # Initialize client from environment variables
 client = get_client()
 
-# Fetch categories
-categories = client.list_categories()
-print(f"Found {len(categories)} categories")
-
 # Fetch topics
-topics = client.list_topics()
+topics = client.list_topics(details=True)
 print(f"Found {len(topics)} topics")
+print(f"First topic acronym: {topics[0].get('acronym')}")
 
-# Fetch topics filtered by category
-finance_topics = client.list_topics(category_id="category-uuid")
-print(f"Found {len(finance_topics)} finance topics")
-
-# Fetch topics with detailed information
-detailed_topics = client.list_topics(details=True)
-print(f"First topic acronym: {detailed_topics[0].get('acronym')}")
+sample_topic_id = topics[0]['id']
 
 # Fetch entries for a specific topic
-entries = client.get_topic_entries(topic_id="topic-123")
+entries = client.get_topic_entries(topic_id=sample_topic_id) 
 print(f"Found {len(entries)} entries")
+
+# Fetch annotations for a topic
+annotations = client.get_annotations(topic_ids=[sample_topic_id])
+print(f"Found {len(annotations)} annotations")
+
+print("Sample:")
+print(json.dumps(annotations[0], indent=4))
+
+print("Annotations")
+for ann in annotations[:3]:
+    metadata = ann['annotation']['classification']['metadata']
+    scores   = ann["annotation"]["scores"]
+    
+    print(f"  Entry {ann['feed_entry_id']}: {metadata['title']}")
+    print(f"       url={metadata['feed_url']}")
+    print(f"       relevance={scores['relevance']['label']}")
+    print(f"       impact={scores['impact']['label']}")
+
 ```
 
 ### 3. Using DataFrames
@@ -94,10 +104,6 @@ load_dotenv()
 
 # Create data manager
 dm = create_data_manager()
-
-# Get categories as DataFrame
-categories_df = dm.get_categories_df()
-print(categories_df[['id', 'name', 'topic_count']].head())
 
 # Get topics as DataFrame
 topics_df = dm.get_topics_df()
