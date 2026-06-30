@@ -133,24 +133,31 @@ load_dotenv()
 # Create query engine
 qe = create_query_engine()
 
-# Filter by category to get all entries across a category's topics
-results = qe \
-    .filter_by_category(category_name="Finance") \
-    .filter_by_date(start_date=datetime(2024, 1, 1)) \
-    .search_entries("regulation") \
-    .to_dataframe()
+# Get the first topic id dynamically
+from carver_feeds import get_client
+client = get_client()
+topics = client.list_topics()
+sample_topic_id = topics[0]['id']
+
+# Filter entries for a topic, narrow by date, then search by title keyword
+results = (qe
+    .filter_by_topic(topic_id=sample_topic_id)
+    .filter_by_date(start_date=datetime(2025, 1, 1))
+    .search_entries("balance", search_fields=["entry_title"])
+    .to_dataframe())
 
 print(f"Found {len(results)} matching entries")
+print(results[["entry_title", "entry_published_at"]].head(3))
 
-# Or filter by specific topic within a category
-results = qe.chain() \
-    .filter_by_category(category_name="Finance") \
-    .filter_by_topic(topic_name="Abu Dhabi") \
-    .to_dataframe()
+# Start a fresh chain on the same engine
+results = (qe.chain()
+    .filter_by_topic(topic_id=sample_topic_id)
+    .filter_by_active(is_active=True)
+    .to_dataframe())
 
 # Export results
-qe.to_csv("results.csv")
-qe.to_json("results.json")
+results.to_csv("results.csv", index=False)
+results.to_json("results.json", orient="records")
 ```
 
 ## 🏗️ Core Components
